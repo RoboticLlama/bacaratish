@@ -21,7 +21,7 @@
     body {
       margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
       Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial; color: var(--text);
-      background radial-gradient(1200px 800px at 20% 10%, #1c2242 0%, #0f1220 50%, #0b0e19 100%);
+      background: radial-gradient(1200px 800px at 20% 10%, #1c2242 0%, #0f1220 50%, #0b0e19 100%);
       min-height: 100svh; display: grid; place-items: center; padding: 24px;
     }
     .app { width: min(1100px, 96vw); }
@@ -257,7 +257,7 @@
       const deltaSign = delta > 0 ? '+' : '';
       const deltaClass = delta > 0 ? 'win' : delta < 0 ? 'lose' : 'tie';
       const resultText = outcome === 'player' ? 'Player' : outcome === 'banker' ? 'Banker' : 'Tie';
-      const resultClass = outcome === bet ? 'win' : outcome;
+      const resultClass = outcome === bet ? 'win' : 'lose';
       tr.innerHTML = `
         <td style="opacity:.8">${handNo}</td>
         <td>${bet.charAt(0).toUpperCase() + bet.slice(1)}</td>
