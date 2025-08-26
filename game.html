@@ -62,6 +62,7 @@
     button.secondary { background: #262c4f; box-shadow: 0 6px 14px rgba(0,0,0,.25); }
     button.ghost { background: transparent; border: 1px solid #343b6b; color: var(--muted); box-shadow: none; }
     button:disabled { opacity: .45; cursor: not-allowed; }
+    button.active { background: linear-gradient(180deg, color-mix(in oklab, var(--win), white 12%), var(--win)); box-shadow: 0 8px 18px rgba(32,201,151,.35); }
     .kpi { display: grid; grid-auto-flow: column; gap: 16px; align-items: center; }
     .pill { background: #1a1f3f; border: 1px solid #2a3171; border-radius: 999px; padding: 8px 12px; font-weight: 700; }
 
@@ -111,6 +112,9 @@
               <div class="pill status" id="round-status">Ready</div>
             </div>
             <div class="controls">
+              <button class="secondary" id="bet-player">Bet Player</button>
+              <button class="secondary" id="bet-banker">Bet Banker</button>
+              <button class="secondary" id="bet-tie">Bet Tie</button>
               <button id="deal">Deal Hand</button>
               <button class="secondary" id="reshuffle">Reshuffle</button>
               <button class="ghost" id="reset">Reset Game</button>
@@ -131,7 +135,9 @@
               <li>Pair of the same symbol → the hand becomes that <em>symbol</em>.</li>
               <li>Two different symbols → reduce using RPS: Rock beats Scissors, Scissors beats Paper, Paper beats Rock.</li>
               <li>Compare Player vs Banker results: winning symbol takes the hand; same symbol → tie.</li>
-              <li><strong>Lives</strong>: each hand stakes 1 life. Win +1 life, Lose −1 life, Tie 0.</li>
+              <li><strong>Betting</strong>: Before each hand, bet 1 life on Player, Banker, or Tie. If wrong, lose 1 life.</li>
+              <li>If correct: Player bet gains +0.5 life, Banker +1 life, Tie +2 lives (net).</li>
+              <li>Start with 3 lives. Max lives: 7.</li>
             </ul>
           </div>
 
@@ -140,7 +146,7 @@
             <div class="history">
               <table>
                 <thead>
-                  <tr><th>#</th><th>Player</th><th>Banker</th><th>Result</th></tr>
+                  <tr><th>#</th><th>Bet</th><th>Player</th><th>Banker</th><th>Result</th><th>Δ Lives</th></tr>
                 </thead>
                 <tbody id="log"></tbody>
               </table>
@@ -200,6 +206,7 @@
     let deck = makeDeck();
     let lives = 3;
     let handNo = 0;
+    let currentBet = null;
 
     const els = {
       pCards: document.getElementById('player-cards'),
@@ -212,12 +219,25 @@
       deal: document.getElementById('deal'),
       reshuffle: document.getElementById('reshuffle'),
       reset: document.getElementById('reset'),
+      betPlayer: document.getElementById('bet-player'),
+      betBanker: document.getElementById('bet-banker'),
+      betTie: document.getElementById('bet-tie'),
     };
 
     function updateDeckUI(){
       els.deckCount.textContent = deck.length;
       const pct = Math.max(0, Math.min(100, (deck.length/38)*100));
       els.deckbar.style.width = pct + '%';
+    }
+
+    function updateLivesUI(){
+      els.lives.textContent = Number.isInteger(lives) ? lives : lives.toFixed(1);
+      if (lives < 1) {
+        els.deal.disabled = true;
+        setStatus('Game Over – Not enough lives', 'lose');
+      } else {
+        els.deal.disabled = false;
+      }
     }
 
     function renderCards(node, cards){
@@ -230,15 +250,19 @@
       });
     }
 
-    function appendLog(pCards, bCards, outcome){
+    function appendLog(pCards, bCards, bet, outcome, delta){
       handNo += 1;
       const tr = document.createElement('tr');
       const fmt = cs => cs.map(c=>EMOJI[c]).join(' ');
+      const deltaSign = delta > 0 ? '+' : '';
+      const deltaClass = delta > 0 ? 'win' : delta < 0 ? 'lose' : 'tie';
       tr.innerHTML = `
         <td style="opacity:.8">${handNo}</td>
+        <td>${bet.charAt(0).toUpperCase() + bet.slice(1)}</td>
         <td>${fmt(pCards)}</td>
         <td>${fmt(bCards)}</td>
         <td><span class="tag ${outcome}">${outcome.toUpperCase()}</span></td>
+        <td><span class="tag ${deltaClass}">${deltaSign}${delta}</span></td>
       `;
       els.log.prepend(tr);
     }
@@ -257,8 +281,17 @@
     }
 
     function deal(){
-      if(lives <= 0){ setStatus('Game Over', 'lose'); return; }
+      if (!currentBet) {
+        setStatus('Select a bet first', '');
+        return;
+      }
+      if (lives < 1) {
+        setStatus('Not enough lives to bet', 'lose');
+        return;
+      }
       ensureDeck(4);
+      lives -= 1;
+      updateLivesUI();
       const pCards = [deck.pop(), deck.pop()];
       const bCards = [deck.pop(), deck.pop()];
       updateDeckUI();
@@ -270,17 +303,39 @@
       const bEval = evalHand(bCards);
       const who = compareHands(pEval, bEval);
 
-      if(who==='player'){ lives += 1; setStatus('Player Wins ('+pEval.label+' beats '+bEval.label+')','win'); }
-      else if(who==='banker'){ lives -= 1; setStatus('Banker Wins ('+bEval.label+' beats '+pEval.label+')','lose'); }
-      else { setStatus('Tie ('+pEval.label+')', 'tie'); }
-
-      els.lives.textContent = lives;
-      appendLog(pCards, bCards, who==='player'?'win':who==='banker'?'lose':'tie');
-
-      if(lives <= 0){
-        setStatus('Game Over – You ran out of lives', 'lose');
-        els.deal.disabled = true;
+      let delta = -1;
+      let reward = 0;
+      let statusText = '';
+      let statusCls = '';
+      if (who === 'player') {
+        statusText = 'Player Wins (' + pEval.label + ' beats ' + bEval.label + ')';
+        statusCls = 'win';
+      } else if (who === 'banker') {
+        statusText = 'Banker Wins (' + bEval.label + ' beats ' + pEval.label + ')';
+        statusCls = 'lose';
+      } else {
+        statusText = 'Tie (' + pEval.label + ')';
+        statusCls = 'tie';
       }
+
+      if (currentBet === who) {
+        reward = who === 'player' ? 0.5 : who === 'banker' ? 1 : 2;
+        delta = reward;
+        lives += 1 + reward;
+        lives = Math.min(7, lives);
+        statusText += ' | Correct bet! +' + reward + ' lives';
+        statusCls = 'win';
+      } else {
+        statusText += ' | Wrong bet, -1 life';
+      }
+      updateLivesUI();
+      setStatus(statusText, statusCls);
+
+      appendLog(pCards, bCards, currentBet, who === 'player' ? 'win' : who === 'banker' ? 'lose' : 'tie', delta);
+
+      // Reset bet selection
+      currentBet = null;
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
     }
 
     function reshuffle(){
@@ -291,22 +346,44 @@
 
     function reset(){
       deck = makeDeck(); updateDeckUI();
-      lives = 3; els.lives.textContent = lives;
+      lives = 3; updateLivesUI();
       handNo = 0; els.log.innerHTML = '';
-      els.deal.disabled = false;
+      currentBet = null;
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
       setStatus('Ready');
       // Reset ghost placeholders
       document.getElementById('player-cards').innerHTML = '<div class="card ghost">🃏</div><div class="card ghost">🃏</div>';
       document.getElementById('banker-cards').innerHTML = '<div class="card ghost">🃏</div><div class="card ghost">🃏</div>';
     }
 
-    // Wire up
+    // Wire up bet buttons
+    els.betPlayer.addEventListener('click', () => {
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+      els.betPlayer.classList.add('active');
+      currentBet = 'player';
+      setStatus('Bet on Player', '');
+    });
+    els.betBanker.addEventListener('click', () => {
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+      els.betBanker.classList.add('active');
+      currentBet = 'banker';
+      setStatus('Bet on Banker', '');
+    });
+    els.betTie.addEventListener('click', () => {
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+      els.betTie.classList.add('active');
+      currentBet = 'tie';
+      setStatus('Bet on Tie', '');
+    });
+
+    // Wire up other buttons
     els.deal.addEventListener('click', deal);
     els.reshuffle.addEventListener('click', reshuffle);
     els.reset.addEventListener('click', reset);
 
     // initial draw of deck status
     updateDeckUI();
+    updateLivesUI();
   </script>
 </body>
 </html>
