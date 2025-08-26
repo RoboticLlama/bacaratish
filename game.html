@@ -22,62 +22,70 @@
       margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
       Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial; color: var(--text);
       background: radial-gradient(1200px 800px at 20% 10%, #1c2242 0%, #0f1220 50%, #0b0e19 100%);
-      min-height: 100svh; display: grid; place-items: center; padding: 24px;
+      min-height: 100svh; display: grid; place-items: center; padding: clamp(12px, 3vw, 24px);
     }
     .app { width: min(1100px, 96vw); }
     .panel {
       background: color-mix(in oklab, var(--panel), transparent 5%);
       border: 1px solid color-mix(in oklab, var(--accent), transparent 80%);
-      border-radius: 20px; padding: 18px 18px 8px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      backdrop-filter: blur(6px);
+      border-radius: 20px; padding: clamp(12px, 2vw, 18px) clamp(12px, 2vw, 18px) 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35); backdrop-filter: blur(6px);
     }
-    h1 { margin: 0 0 6px; font-size: clamp(22px, 3vw, 30px); letter-spacing: .2px; }
-    p, li { color: var(--muted); }
+    h1 { margin: 0 0 6px; font-size: clamp(18px, 3vw, 26px); letter-spacing: .2px; }
+    p, li { color: var(--muted); font-size: clamp(12px, 1.8vw, 14px); }
 
-    .row { display: grid; grid-template-columns: 1fr; gap: 16px; }
-    @media (min-width: 860px){ .row { grid-template-columns: 1.2fr .8fr; } }
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 860px) { .row { grid-template-columns: 1.2fr .8fr; } }
+    @media (max-width: 600px) { .row { gap: 8px; } }
 
-    .board { display: grid; gap: 14px; }
-    .lane { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 14px; }
-    .label { font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); opacity: .9; }
+    .board { display: grid; gap: 12px; }
+    .lane { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 12px; }
+    @media (max-width: 600px) { .lane { grid-template-columns: 80px 1fr; gap: 8px; } }
+    .label { font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); opacity: .9; font-size: clamp(12px, 1.8vw, 14px); }
 
-    .cards { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; min-height: 98px; }
-    .card { width: 86px; height: 116px; border-radius: 14px; background: var(--card-bg); border: 1px solid rgba(255,255,255,.08);
-      display: grid; place-items: center; font-size: 44px; position: relative; box-shadow: 0 10px 20px rgba(0,0,0,.25);
+    .cards { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-height: 90px; }
+    .card { width: 80px; height: 108px; border-radius: 12px; background: var(--card-bg); border: 1px solid rgba(255,255,255,.08);
+      display: grid; place-items: center; font-size: 36px; position: relative; box-shadow: 0 8px 16px rgba(0,0,0,.25);
       transform: translateY(0); transition: transform .15s ease, box-shadow .15s ease; }
-    .card:hover { transform: translateY(-2px); box-shadow: 0 14px 26px rgba(0,0,0,.32); }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 12px 22px rgba(0,0,0,.32); }
+    @media (max-width: 600px) { .card { width: 64px; height: 86px; font-size: 28px; } }
     .ghost { opacity: .28; border-style: dashed; }
 
-    .status { font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+    .status { font-weight: 800; letter-spacing: .6px; text-transform: uppercase; font-size: clamp(12px, 1.8vw, 14px); }
     .status.win { color: var(--win); }
     .status.lose { color: var(--lose); }
     .status.tie { color: var(--tie); }
 
-    .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     button {
       background: linear-gradient(180deg, color-mix(in oklab, var(--accent), white 12%), var(--accent));
-      color: white; border: 0; padding: 12px 16px; border-radius: 14px; font-weight: 700; cursor: pointer;
-      box-shadow: 0 8px 18px rgba(124,92,255,.35); transition: transform .08s ease, box-shadow .12s ease, opacity .15s ease;
+      color: white; border: 0; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 16px rgba(124,92,255,.35); transition: transform .08s ease, box-shadow .12s ease, opacity .15s ease;
+      min-height: 48px; font-size: clamp(12px, 1.8vw, 14px); touch-action: manipulation;
     }
-    button.secondary { background: #262c4f; box-shadow: 0 6px 14px rgba(0,0,0,.25); }
+    button.secondary { background: #262c4f; box-shadow: 0 5px 12px rgba(0,0,0,.25); }
     button.ghost { background: transparent; border: 1px solid #343b6b; color: var(--muted); box-shadow: none; }
     button:disabled { opacity: .45; cursor: not-allowed; }
-    button.active { background: linear-gradient(180deg, color-mix(in oklab, var(--win), white 12%), var(--win)); box-shadow: 0 8px 18px rgba(32,201,151,.35); }
-    .kpi { display: grid; grid-auto-flow: column; gap: 16px; align-items: center; }
-    .pill { background: #1a1f3f; border: 1px solid #2a3171; border-radius: 999px; padding: 8px 12px; font-weight: 700; }
+    button.active { background: linear-gradient(180deg, color-mix(in oklab, var(--win), white 12%), var(--win)); box-shadow: 0 6px 16px rgba(32,201,151,.35); }
+    .kpi { display: grid; grid-auto-flow: column; gap: 12px; align-items: center; }
+    .pill { background: #1a1f3f; border: 1px solid #2a3171; border-radius: 999px; padding: 6px 10px; font-weight: 700; font-size: clamp(12px, 1.8vw, 14px); }
 
-    .right { display: grid; gap: 14px; }
-    .stack { display: grid; gap: 10px; }
-    .history { max-height: 320px; overflow: auto; border-radius: 12px; border: 1px solid #29306a; background: rgba(18,22,42,.6); }
-    .history table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .history th, .history td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .right { display: grid; gap: 12px; }
+    .stack { display: grid; gap: 8px; }
+    .history { max-height: 280px; overflow: auto; border-radius: 12px; border: 1px solid #29306a; background: rgba(18,22,42,.6); }
+    .history table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 1.6vw, 12px); }
+    .history th, .history td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.06); }
     .history tr:last-child td { border-bottom: 0; }
-    .tag { padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+    @media (max-width: 600px) {
+      .history { overflow-x: auto; }
+      .history table { min-width: 400px; }
+    }
+    .tag { padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: clamp(10px, 1.5vw, 11px); text-transform: uppercase; letter-spacing: .4px; }
     .tag.win { background: color-mix(in oklab, var(--win), transparent 80%); color: var(--win); }
     .tag.lose { background: color-mix(in oklab, var(--lose), transparent 80%); color: var(--lose); }
     .tag.tie { background: color-mix(in oklab, var(--tie), transparent 80%); color: var(--tie); }
 
-    .small { font-size: 12px; color: var(--muted); }
+    .small { font-size: clamp(10px, 1.5vw, 11px); color: var(--muted); }
     .rules { line-height: 1.5; }
     .divider { height: 1px; background: rgba(255,255,255,.08); margin: 6px 0 0; }
     .deckbar { height: 6px; background: #22284a; border-radius: 999px; overflow: hidden; }
@@ -105,19 +113,19 @@
             </div>
           </div>
 
-          <div style="display:flex; align-items:center; justify-content:space-between; gap: 14px; flex-wrap: wrap;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap;">
             <div class="kpi">
-              <div class="pill">Lives: <span id="lives">3</span></div>
-              <div class="pill">Deck: <span id="deck-count">38</span> cards</div>
-              <div class="pill status" id="round-status">Ready</div>
+              <div class="pill" aria-live="polite">Lives: <span id="lives">3</span></div>
+              <div class="pill" aria-live="polite">Deck: <span id="deck-count">38</span> cards</div>
+              <div class="pill status" id="round-status" aria-live="polite">Ready</div>
             </div>
             <div class="controls">
-              <button class="secondary" id="bet-player">Bet Player</button>
-              <button class="secondary" id="bet-banker">Bet Banker</button>
-              <button class="secondary" id="bet-tie">Bet Tie</button>
-              <button id="deal">Deal Hand</button>
-              <button class="secondary" id="reshuffle">Reshuffle</button>
-              <button class="ghost" id="reset">Reset Game</button>
+              <button class="secondary" id="bet-player" tabindex="0" aria-label="Bet on Player to win">Bet Player</button>
+              <button class="secondary" id="bet-banker" tabindex="0" aria-label="Bet on Banker to win">Bet Banker</button>
+              <button class="secondary" id="bet-tie" tabindex="0" aria-label="Bet on a Tie">Bet Tie</button>
+              <button id="deal" tabindex="0" aria-label="Deal a new hand">Deal Hand</button>
+              <button class="secondary" id="reshuffle" tabindex="0" aria-label="Reshuffle the deck">Reshuffle</button>
+              <button class="ghost" id="reset" tabindex="0" aria-label="Reset the game to default state">Reset Game</button>
             </div>
           </div>
 
@@ -148,7 +156,7 @@
                 <thead>
                   <tr><th>#</th><th>Bet</th><th>Player</th><th>Banker</th><th>Result</th><th>Δ Lives</th></tr>
                 </thead>
-                <tbody id="log"></tbody>
+                <tbody id="log" aria-live="polite"></tbody>
               </table>
             </div>
             <div class="small">Tip: The deck auto-reshuffles when it runs low. Use <em>Reset Game</em> to return to defaults or <em>Reshuffle</em> to keep your lives but refresh the deck.</div>
@@ -270,7 +278,7 @@
     }
 
     function setStatus(text, cls){
-      els.status.className = 'pill status' + (cls? ' ' + cls : '');
+      els.status.className = 'pill status' + (cls ? ' ' + cls : '');
       els.status.textContent = text;
     }
 
@@ -383,7 +391,22 @@
     els.reshuffle.addEventListener('click', reshuffle);
     els.reset.addEventListener('click', reset);
 
-    // initial draw of deck status
+    // Keyboard navigation
+    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset].forEach(btn => {
+      btn.addEventListener('keydown', e => {
+        if (e.key === 'Enter') btn.click();
+      });
+    });
+
+    // Touch support for mobile
+    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset].forEach(btn => {
+      btn.addEventListener('touchstart', e => {
+        e.preventDefault(); // Prevent double-tap zoom
+        btn.click();
+      });
+    });
+
+    // Initial draw of deck status
     updateDeckUI();
     updateLivesUI();
   </script>
