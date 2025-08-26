@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mini Baccarat – Rock • Paper • Scissors • Joker</title>
+  <title>Mini Baccarat – Fire • Water • Earth • Air • Light • Dark • All</title>
   <style>
     :root {
       --bg: #0f1220;
@@ -95,7 +95,7 @@
 <body>
   <div class="app">
     <div class="panel">
-      <h1>Mini Baccarat – <span style="opacity:.85">Rock • Paper • Scissors • Joker</span></h1>
+      <h1>Mini Baccarat – <span style="opacity:.85">Fire • Water • Earth • Air • Light • Dark • All</span></h1>
       <div class="row">
         <div class="board">
           <div class="lane">
@@ -136,15 +136,16 @@
           <div class="stack rules">
             <strong>Rules (your custom variant)</strong>
             <ul>
-              <li>Deck: <strong>38 cards</strong> — 8 Jokers, 10 Rock, 10 Paper, 10 Scissors.</li>
+              <li>Deck: <strong>38 cards</strong> — 6 Fire, 6 Water, 6 Earth, 6 Air, 6 Light, 6 Dark, 2 All.</li>
               <li>Each side is dealt <strong>two cards</strong>.</li>
-              <li><strong>Two Jokers</strong> = automatic win for that side. If both have two Jokers → tie.</li>
-              <li>One Joker + one symbol → the hand becomes that <em>symbol</em>.</li>
-              <li>Pair of the same symbol → the hand becomes that <em>symbol</em>.</li>
-              <li>Two different symbols → reduce using RPS: Rock beats Scissors, Scissors beats Paper, Paper beats Rock.</li>
-              <li>Compare Player vs Banker results: winning symbol takes the hand; same symbol → tie.</li>
+              <li><strong>Two All cards</strong> = automatic win for that side. If both have two All cards → tie.</li>
+              <li>One All + one suit → the hand becomes that <em>suit</em>.</li>
+              <li>Pair of the same suit → the hand becomes that <em>suit</em>.</li>
+              <li>Two different suits → reduce using: Fire beats Air, Air beats Earth, Earth beats Water, Water beats Light, Light beats Dark, Dark beats Fire.</li>
+              <li>Dominance cycle: <strong>Fire > Air > Earth > Water > Light > Dark > Fire</strong>.</li>
+              <li>Compare Player vs Banker results: winning suit takes the hand; same suit → tie.</li>
               <li><strong>Betting</strong>: Before each hand, bet 1 life on Player, Banker, or Tie. If wrong, lose 1 life.</li>
-              <li>If correct: Player bet gains +0.5 life, Banker +1 life, Tie +2 lives (net).</li>
+              <li>If correct: Player bet gains +0.5 life (+1 if Player wins with two All cards), Banker +1 life (+1.5 if Banker wins with two All cards), Tie +2 lives (+2.5 if Tie with two All cards each).</li>
               <li>Start with 3 lives. Max lives: 7.</li>
             </ul>
           </div>
@@ -168,13 +169,13 @@
 
   <script>
     // --- Card & Deck model ----------------------------------------------------
-    const EMOJI = { R: '🪨', P: '📄', S: '✂️', J: '🃏' };
-    const NAME  = { R: 'Rock', P: 'Paper', S: 'Scissors', J: 'Joker' };
+    const EMOJI = { F: '🔥', W: '💧', E: '🌍', A: '💨', L: '💡', D: '🌑', X: '🌟' };
+    const NAME  = { F: 'Fire', W: 'Water', E: 'Earth', A: 'Air', L: 'Light', D: 'Dark', X: 'All' };
 
     function makeDeck(){
       const deck = [];
-      for(let i=0;i<10;i++){ deck.push('R','P','S'); } // 30 cards, 10 each
-      for(let j=0;j<8;j++){ deck.push('J'); }           // 8 jokers → 38 total
+      for(let i=0;i<6;i++){ deck.push('F','W','E','A','L','D'); } // 36 cards, 6 each
+      for(let j=0;j<2;j++){ deck.push('X'); }                      // 2 All → 38 total
       return shuffle(deck);
     }
 
@@ -190,23 +191,23 @@
 
     // Evaluate a two-card hand to its effective type
     function evalHand([c1, c2]){
-      if(c1==='J' && c2==='J') return { type: 'JJ', label: 'Double Joker' };
-      if(c1==='J' && c2!=='J') return { type: c2, label: NAME[c2] };
-      if(c2==='J' && c1!=='J') return { type: c1, label: NAME[c1] };
+      if(c1==='X' && c2==='X') return { type: 'XX', label: 'Double All' };
+      if(c1==='X' && c2!=='X') return { type: c2, label: NAME[c2] };
+      if(c2==='X' && c1!=='X') return { type: c1, label: NAME[c1] };
       if(c1===c2) return { type: c1, label: NAME[c1] };
-      // Different non-jokers → resolve via RPS dominance
-      const beats = { R: 'S', S: 'P', P: 'R' };
-      const winner = beats[c1]===c2 ? c1 : c2; // if c1 beats c2 → c1 else c2 beats c1
+      // Different non-All cards → resolve via dominance cycle
+      const beats = { F: 'A', A: 'E', E: 'W', W: 'L', L: 'D', D: 'F' };
+      const winner = beats[c1]===c2 ? c1 : c2;
       return { type: winner, label: NAME[winner] };
     }
 
     // Compare two evaluated hands; return 'player' | 'banker' | 'tie'
     function compareHands(p, b){
-      if(p.type==='JJ' && b.type==='JJ') return 'tie';
-      if(p.type==='JJ') return 'player';
-      if(b.type==='JJ') return 'banker';
+      if(p.type==='XX' && b.type==='XX') return 'tie';
+      if(p.type==='XX') return 'player';
+      if(b.type==='XX') return 'banker';
       if(p.type===b.type) return 'tie';
-      const beats = { R: 'S', S: 'P', P: 'R' };
+      const beats = { F: 'A', A: 'E', E: 'W', W: 'L', L: 'D', D: 'F' };
       return beats[p.type]===b.type ? 'player' : 'banker';
     }
 
@@ -359,10 +360,18 @@
 
                 if (currentBet === who) {
                   reward = who === 'player' ? 0.5 : who === 'banker' ? 1 : 2;
+                  // Add +0.5 reward if the winning hand (or both in a tie) has Double All
+                  if ((who === 'player' && pEval.type === 'XX') ||
+                      (who === 'banker' && bEval.type === 'XX') ||
+                      (who === 'tie' && pEval.type === 'XX' && bEval.type === 'XX')) {
+                    reward += 0.5;
+                    statusText += ' | Double All bonus! +' + reward + ' lives';
+                  } else {
+                    statusText += ' | Correct bet! +' + reward + ' lives';
+                  }
                   delta = reward;
                   lives += 1 + reward;
                   lives = Math.min(7, lives);
-                  statusText += ' | Correct bet! +' + reward + ' lives';
                   statusCls = 'win';
                 } else {
                   statusText += ' | Wrong bet, -1 life';
