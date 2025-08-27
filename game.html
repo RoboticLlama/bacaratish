@@ -144,9 +144,15 @@
     .history table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 1.6vw, 12px); }
     .history th, .history td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.06); }
     .history tr:last-child td { border-bottom: 0; }
+    .history td:nth-child(3), .history td:nth-child(4) {
+      max-width: 80px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     @media (max-width: 600px) {
       .history { overflow-x: auto; }
-      .history table { min-width: 400px; }
+      .history table { min-width: 100%; }
     }
     .tag { padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: clamp(10px, 1.5vw, 11px); text-transform: uppercase; letter-spacing: .4px; }
     .tag.win { background: color-mix(in oklab, var(--win), transparent 80%); color: var(--win); }
@@ -171,14 +177,14 @@
         <div class="board">
           <div class="lane">
             <div class="label">Player</div>
-            <div class="cards" id="player-cards">
+            <div class="cards" id="player-cards" aria-live="polite">
               <div class="card ghost">🃏</div>
               <div class="card ghost">🃏</div>
             </div>
           </div>
           <div class="lane">
             <div class="label">Banker</div>
-            <div class="cards" id="banker-cards">
+            <div class="cards" id="banker-cards" aria-live="polite">
               <div class="card ghost">🃏</div>
               <div class="card ghost">🃏</div>
             </div>
@@ -276,8 +282,8 @@
       MAX_LIVES: 7,
       MIN_CARDS_FOR_DEAL: 4,
       MAX_HISTORY_ENTRIES: 50,
-      ANIMATION_DELAY: 500,
-      TOTAL_ANIMATION_TIME: 2000
+      ANIMATION_DELAY: 350, // Adjusted to match CSS transition duration + buffer
+      TOTAL_ANIMATION_TIME: 1600 // 4 * (300ms transition + 100ms buffer)
     };
 
     const suitIndex = { W: 0, F: 1, D: 2, A: 3, E: 4, L: 5 };
@@ -314,6 +320,9 @@
     // --- Hand Evaluation ------------------------------------------------------
     const Hand = {
       evaluate([c1, c2]) {
+        if (!CONFIG.EMOJI[c1] || !CONFIG.EMOJI[c2]) {
+          throw new Error(`Invalid card types: ${c1}, ${c2}`);
+        }
         if (c1 === 'X' && c2 === 'X') return { type: 'XX', label: 'Double All' };
         if (c1 === 'X' && c2 !== 'X') return { type: c2, label: CONFIG.NAME[c2] };
         if (c2 === 'X' && c1 !== 'X') return { type: c1, label: CONFIG.NAME[c1] };
@@ -436,6 +445,7 @@
           if (!CONFIG.EMOJI[card]) throw new Error(`Invalid card type: ${card}`);
           const div = document.createElement('div');
           div.className = `card ${CONFIG.NAME[card].toLowerCase()}`;
+          div.setAttribute('aria-live', 'polite');
           div.innerHTML = `
             <div class="front" aria-label="Card ${index + 1}: ${CONFIG.NAME[card]}" tabindex="0">${CONFIG.EMOJI[card]}</div>
             <div class="back">🃏</div>
@@ -445,7 +455,6 @@
           } else {
             node.appendChild(div);
           }
-          // Trigger flip animation after a delay to ensure DOM update
           setTimeout(() => {
             div.classList.add('revealing');
           }, 50);
@@ -502,10 +511,15 @@
       isSimRunning = true;
       UI.disableButtons(true);
       UI.setStatus('Running simulation...', 'tie');
-      setTimeout(() => {
-        const N = 100000;
-        let counts = { player: 0, banker: 0, tie: 0 };
-        for (let i = 0; i < N; i++) {
+
+      const N = 10000;
+      let counts = { player: 0, banker: 0, tie: 0 };
+      let i = 0;
+      const chunkSize = 1000;
+
+      function processChunk() {
+        const end = Math.min(i + chunkSize, N);
+        for (; i < end; i++) {
           let tempDeck = Deck.make();
           let pCards = [tempDeck.pop(), tempDeck.pop()];
           let bCards = [tempDeck.pop(), tempDeck.pop()];
@@ -514,15 +528,20 @@
           let who = Hand.compare(pEval, bEval);
           counts[who]++;
         }
-        document.getElementById('sim-content').innerHTML = `
-          Player Win Rate: ${(counts.player / N * 100).toFixed(2)}%<br>
-          Banker Win Rate: ${(counts.banker / N * 100).toFixed(2)}%<br>
-          Tie Rate: ${(counts.tie / N * 100).toFixed(2)}%
-        `;
-        UI.setStatus('Simulation complete', 'win');
-        isSimRunning = false;
-        UI.disableButtons(false);
-      }, 0);
+        if (i < N) {
+          requestAnimationFrame(processChunk);
+        } else {
+          document.getElementById('sim-content').innerHTML = `
+            Player Win Rate: ${(counts.player / N * 100).toFixed(2)}%<br>
+            Banker Win Rate: ${(counts.banker / N * 100).toFixed(2)}%<br>
+            Tie Rate: ${(counts.tie / N * 100).toFixed(2)}%
+          `;
+          UI.setStatus('Simulation complete', 'win');
+          isSimRunning = false;
+          UI.disableButtons(false);
+        }
+      }
+      requestAnimationFrame(processChunk);
     }
 
     // --- Game Logic -----------------------------------------------------------
@@ -550,6 +569,7 @@
       UI.renderCards(els.bCards, ['?', '?'], true);
 
       // Reveal cards one by one
+      const ANIMATION_DURATION = 300; // Matches CSS transition duration
       setTimeout(() => {
         UI.setStatus('Revealing Player card 1...', '');
         UI.renderSingleCard(els.pCards, pCards[0], 0);
@@ -599,7 +619,7 @@
                   lives += 1 + reward;
                   statusCls = 'win';
                 } else {
-                  statusText += ' | Wrong bet, -1 life';
+                  statusText += ' | Incorrect bet';
                 }
                 UI.updateLives();
                 UI.setStatus(statusText, statusCls);
@@ -611,10 +631,10 @@
                 [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
                 UI.disableButtons(false);
                 els.deal.focus();
-              }, CONFIG.ANIMATION_DELAY);
-            }, CONFIG.ANIMATION_DELAY);
-          }, CONFIG.ANIMATION_DELAY);
-        }, CONFIG.ANIMATION_DELAY);
+              }, ANIMATION_DURATION + 100);
+            }, ANIMATION_DURATION + 100);
+          }, ANIMATION_DURATION + 100);
+        }, ANIMATION_DURATION + 100);
       }, 0);
     }
 
