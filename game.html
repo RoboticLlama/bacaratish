@@ -43,6 +43,7 @@
       Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial; color: var(--text);
       background: radial-gradient(1200px 800px at 20% 10%, #1c2242 0%, #0f1220 50%, #0b0e19 100%);
       min-height: 100svh; display: grid; place-items: center; padding: var(--spacing-md);
+      position: relative;
     }
     .app { width: min(1100px, 96vw); }
     .panel {
@@ -138,6 +139,36 @@
     .kpi { display: grid; grid-auto-flow: column; gap: var(--spacing-sm); align-items: center; }
     .pill { background: #1a1f3f; border: 1px solid #2a3171; border-radius: 999px; padding: 6px 10px; font-weight: 700; font-size: var(--text-base); }
 
+    .run-sim-container {
+      position: fixed;
+      bottom: var(--spacing-md);
+      left: var(--spacing-md);
+      z-index: 10;
+    }
+    button.run-sim {
+      background: transparent;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: var(--text-base);
+      border-radius: var(--border-radius);
+      box-shadow: none;
+      transition: all .15s ease;
+    }
+    button.run-sim:hover {
+      background: color-mix(in oklab, var(--accent), transparent 90%);
+      transform: translateY(-2px);
+    }
+    button.run-sim:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      border-color: var(--muted);
+      color: var(--muted);
+    }
+
     .right { display: grid; gap: var(--spacing-sm); }
     .stack { display: grid; gap: 8px; }
     .history { max-height: 280px; overflow: auto; border-radius: var(--border-radius); border: 1px solid #29306a; background: rgba(18,22,42,.6); }
@@ -202,7 +233,6 @@
               <button class="secondary" id="bet-tie" tabindex="0" aria-label="Bet on a Tie">Bet Tie</button>
               <button id="deal" tabindex="0" aria-label="Deal a new hand">Deal Hand</button>
               <button class="secondary" id="reshuffle" tabindex="0" aria-label="Reshuffle the deck">Reshuffle</button>
-              <button class="secondary" id="run-sim" tabindex="0" aria-label="Run simulation for win rates">Run Sim</button>
               <button class="ghost" id="reset" tabindex="0" aria-label="Reset the game to default state">Reset Game</button>
               <button class="ghost" id="toggle-contrast" tabindex="0" aria-label="Toggle high contrast mode">High Contrast</button>
             </div>
@@ -255,11 +285,15 @@
 
           <div class="stack">
             <strong>Simulation Results for Hand Win Rates</strong>
-            <div id="sim-content">Click "Run Sim" to compute.</div>
+            <div id="sim-content">Click the train to compute.</div>
           </div>
         </div>
       </div>
     </div>
+  </div>
+
+  <div class="run-sim-container">
+    <button class="run-sim" id="run-sim" tabindex="0" aria-label="Run simulation for win rates">🚂</button>
   </div>
 
   <div id="game-over">
@@ -665,7 +699,7 @@
       els.gameOver.style.display = 'none';
       stats = { hands: 0, player: 0, banker: 0, tie: 0 };
       updateStats();
-      document.getElementById('sim-content').innerHTML = 'Click "Run Sim" to compute.';
+      document.getElementById('sim-content').innerHTML = 'Click the train to compute.';
     }
 
     // --- Event Listeners ------------------------------------------------------
