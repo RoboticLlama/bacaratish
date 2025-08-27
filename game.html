@@ -82,9 +82,6 @@
       transform: translateY(-2px);
       box-shadow: 0 12px 22px rgba(0,0,0,.32);
     }
-    .card.revealing {
-      transform: rotateY(180deg);
-    }
     .card .front, .card .back {
       position: absolute;
       width: 100%;
@@ -95,17 +92,17 @@
       border-radius: var(--border-radius);
     }
     .card .front {
-      transform: rotateY(0deg);
+      transform: rotateY(180deg);
     }
     .card .back {
       background: var(--card-bg);
-      transform: rotateY(180deg);
+      transform: rotateY(0deg);
     }
     .card.revealing .front {
-      transform: rotateY(180deg);
+      transform: rotateY(0deg);
     }
     .card.revealing .back {
-      transform: rotateY(0deg);
+      transform: rotateY(180deg);
     }
     @media (max-width: 600px) {
       .card { width: 64px; height: 86px; font-size: 28px; }
@@ -172,11 +169,11 @@
     .right { display: grid; gap: var(--spacing-sm); }
     .stack { display: grid; gap: 8px; }
     .history { max-height: 280px; overflow: auto; border-radius: var(--border-radius); border: 1px solid #29306a; background: rgba(18,22,42,.6); }
-    .history table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 1.6vw, 12px); }
+    .history table { width: 100%; border-collapse: collapse; font-size: clamp(10px, 1.4vw, 11px); }
     .history th, .history td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.06); }
     .history tr:last-child td { border-bottom: 0; }
     .history td:nth-child(3), .history td:nth-child(4) {
-      max-width: 80px;
+      max-width: 120px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -243,19 +240,22 @@
 
         <div class="right">
           <div class="stack rules">
-            <strong>Rules (your custom variant)</strong>
+            <strong>Rules</strong>
             <ul>
               <li>Deck: <strong>38 cards</strong> — 6 Fire, 6 Water, 6 Earth, 6 Air, 6 Light, 6 Dark, 2 All.</li>
-              <li>Each side is dealt <strong>two cards</strong>.</li>
-              <li><strong>Two All cards</strong> = automatic win for that side. If both have two All cards → tie.</li>
-              <li>One All + one suit → the hand becomes that <em>suit</em>.</li>
-              <li>Pair of the same suit → the hand becomes that <em>suit</em>.</li>
-              <li>Two opposite suits (Fire+Water, Air+Earth, Light+Dark) → hand becomes <em>Neutral</em> (loses to any suit or Double All, ties with Neutral).</li>
-              <li>Two different non-opposite suits → reduce using: Water beats Fire, Fire beats Dark, Dark beats Air, Air beats Earth, Earth beats Light, Light beats Water.</li>
-              <li>Dominance cycle: <strong>Water > Fire > Dark > Air > Earth > Light > Water</strong>.</li>
-              <li>Compare Player vs Banker results: the suit with the shorter directional distance in the dominance cycle beats the other and takes the hand; if distances are equal or both Neutral/same suit, it's a tie.</li>
-              <li><strong>Betting</strong>: Before each hand, bet 1 life on Player, Banker, or Tie. If wrong, lose 1 life.</li>
-              <li>If correct: Player bet gains +0.5 life (+1 if Player wins with two All cards), Banker +1 life (+1.5 if Banker wins with two All cards), Tie +2 lives (+2.5 if Tie with two All cards each).</li>
+              <li>Each side (Player, Banker) is dealt <strong>two cards</strong>.</li>
+              <li>Card values: Water=1, Light=2, Earth=3, Air=4, Dark=5, Fire=6.</li>
+              <li>Hand evaluation:
+                <ul>
+                  <li>Two All cards = automatic win (Double All). If both sides have Double All → Tie.</li>
+                  <li>One All + one suit = double the suit’s value (e.g., All + Water = 2 × 1 = 2).</li>
+                  <li>Opposite suits (Fire+Water, Air+Earth, Light+Dark) = Neutral (value=0).</li>
+                  <li>Other pairs: Sum values, map to suit via (sum-1) % 6: 0=Water, 1=Light, 2=Earth, 3=Air, 4=Dark, 5=Fire.</li>
+                </ul>
+              </li>
+              <li>Compare effective suits using dominance cycle: <strong>Water > Fire > Dark > Air > Earth > Light > Water</strong>. Neutral loses to any suit or Double All, ties with Neutral.</li>
+              <li><strong>Betting</strong>: Bet 1 life on Player, Banker, or Tie before each hand. Incorrect bet loses 1 life.</li>
+              <li>Correct bet rewards: Player +0.5 life (+1 if Double All), Banker +1 life (+1.5 if Double All), Tie +2 lives (+2.5 if both Double All).</li>
               <li>Start with 3 lives. Max lives: 7.</li>
             </ul>
           </div>
@@ -280,7 +280,9 @@
 
           <div class="stack">
             <strong>Visual Cycle Diagram</strong>
-            <div id="cycle-diag" style="font-size: var(--text-base); white-space: nowrap; overflow: auto;"></div>
+            <div id="cycle-diag" style="font-size: var(--text-base); white-space: nowrap; overflow: auto;">
+              Water 💧 > Fire 🔥 > Dark 🌑 > Air 💨 > Earth 🌍 > Light 💡 > Water 💧
+            </div>
           </div>
 
           <div class="stack">
@@ -307,8 +309,10 @@
   <script>
     // --- Constants ------------------------------------------------------------
     const CONFIG = {
-      EMOJI: { F: '🔥', W: '💧', E: '🌍', A: '💨', L: '💡', D: '🌑', X: '🌟' },
+      EMOJI: { F: '🔥', W: '💧', E: '🌍', A: '💨', L: '💡', D: '🌑', X: '🌟', N: '🌀' },
       NAME: { F: 'Fire', W: 'Water', E: 'Earth', A: 'Air', L: 'Light', D: 'Dark', X: 'All', N: 'Neutral' },
+      VALUES: { W: 1, L: 2, E: 3, A: 4, D: 5, F: 6 },
+      SUITS_ORDER: ['W', 'L', 'E', 'A', 'D', 'F'],
       BEATS: { W: 'F', F: 'D', D: 'A', A: 'E', E: 'L', L: 'W' },
       OPPOSITES: [['L', 'D'], ['F', 'W'], ['A', 'E']],
       DECK: { F: 6, W: 6, E: 6, A: 6, L: 6, D: 6, X: 2 },
@@ -316,8 +320,8 @@
       MAX_LIVES: 7,
       MIN_CARDS_FOR_DEAL: 4,
       MAX_HISTORY_ENTRIES: 50,
-      ANIMATION_DELAY: 350, // Adjusted to match CSS transition duration + buffer
-      TOTAL_ANIMATION_TIME: 1600 // 4 * (300ms transition + 100ms buffer)
+      ANIMATION_DELAY: 350,
+      TOTAL_ANIMATION_TIME: 1600
     };
 
     const suitIndex = { W: 0, F: 1, D: 2, A: 3, E: 4, L: 5 };
@@ -353,50 +357,54 @@
 
     // --- Hand Evaluation ------------------------------------------------------
     const Hand = {
-      evaluate([c1, c2]) {
-        if (!CONFIG.EMOJI[c1] || !CONFIG.EMOJI[c2]) {
-          throw new Error(`Invalid card types: ${c1}, ${c2}`);
+      evaluate(cards) {
+        if (!CONFIG.EMOJI[cards[0]] || !CONFIG.EMOJI[cards[1]]) {
+          throw new Error(`Invalid card types: ${cards[0]}, ${cards[1]}`);
         }
-        if (c1 === 'X' && c2 === 'X') return { type: 'XX', label: 'Double All' };
-        if (c1 === 'X' && c2 !== 'X') return { type: c2, label: CONFIG.NAME[c2] };
-        if (c2 === 'X' && c1 !== 'X') return { type: c1, label: CONFIG.NAME[c1] };
-        if (c1 === c2) return { type: c1, label: CONFIG.NAME[c1] };
-
-        const isOpposite = (a, b) => CONFIG.OPPOSITES.some(p => p.includes(a) && p.includes(b));
-        if (isOpposite(c1, c2)) {
-          return { type: 'N', label: 'Neutral' };
-        }
-
-        const p1 = suitIndex[c1];
-        const p2 = suitIndex[c2];
-        const dist12 = (p2 - p1 + 6) % 6;
-        const dist21 = (p1 - p2 + 6) % 6;
-        let winner;
-        if (dist12 < dist21) {
-          winner = c1;
-        } else if (dist21 < dist12) {
-          winner = c2;
+        const sortedCards = [...cards].sort();
+        let val = 0;
+        let label = '';
+        if (cards.includes('X')) {
+          if (cards[0] === 'X' && cards[1] === 'X') {
+            return { type: 'XX', label: 'Double All' };
+          }
+          const other = cards.find(c => c !== 'X');
+          val = 2 * CONFIG.VALUES[other];
+          label = `All + ${CONFIG.NAME[other]} (2x) = ${val}`;
         } else {
-          winner = 'N';
+          const isOpposite = CONFIG.OPPOSITES.some(pair =>
+            (sortedCards[0] === pair[0] && sortedCards[1] === pair[1]) ||
+            (sortedCards[0] === pair[1] && sortedCards[1] === pair[0])
+          );
+          if (isOpposite) {
+            val = 0;
+            label = `${CONFIG.NAME[cards[0]]} + ${CONFIG.NAME[cards[1]]} = 0 (Neutral, opposites)`;
+          } else {
+            val = CONFIG.VALUES[cards[0]] + CONFIG.VALUES[cards[1]];
+            label = `${CONFIG.NAME[cards[0]]} + ${CONFIG.NAME[cards[1]]} = ${val}`;
+          }
         }
-        return { type: winner, label: CONFIG.NAME[winner] };
+        let type;
+        if (val === 0) {
+          type = 'N';
+          label += ' → Neutral';
+        } else {
+          const index = (val - 1) % 6;
+          type = CONFIG.SUITS_ORDER[index];
+          label += ` → ${CONFIG.NAME[type]}`;
+        }
+        return { type, label };
       },
       compare(p, b) {
         if (p.type === 'XX' && b.type === 'XX') return 'tie';
         if (p.type === 'XX') return 'player';
         if (b.type === 'XX') return 'banker';
-
         if (p.type === 'N' && b.type === 'N') return 'tie';
         if (p.type === 'N') return 'banker';
         if (b.type === 'N') return 'player';
-
         if (p.type === b.type) return 'tie';
-        const pIndex = suitIndex[p.type];
-        const bIndex = suitIndex[b.type];
-        const distPB = (bIndex - pIndex + 6) % 6;
-        const distBP = (pIndex - bIndex + 6) % 6;
-        if (distPB < distBP) return 'player';
-        if (distBP < distPB) return 'banker';
+        if (CONFIG.BEATS[p.type] === b.type) return 'player';
+        if (CONFIG.BEATS[b.type] === p.type) return 'banker';
         return 'tie';
       }
     };
@@ -504,25 +512,34 @@
         }
       },
       appendLog(pCards, bCards, bet, outcome, delta) {
-        if (els.log.children.length >= CONFIG.MAX_HISTORY_ENTRIES) {
-          els.log.removeChild(els.log.lastChild);
+        try {
+          if (els.log.children.length >= CONFIG.MAX_HISTORY_ENTRIES) {
+            els.log.removeChild(els.log.lastChild);
+          }
+          handNo += 1;
+          const pEval = Hand.evaluate(pCards);
+          const bEval = Hand.evaluate(bCards);
+          const deltaSign = delta > 0 ? '+' : '';
+          const deltaClass = delta > 0 ? 'win' : delta < 0 ? 'lose' : 'tie';
+          const resultText = outcome === 'player' ? 'Player' : outcome === 'banker' ? 'Banker' : 'Tie';
+          const resultClass = bet === outcome ? 'win' : 'lose';
+          const betText = bet ? String(bet).charAt(0).toUpperCase() + String(bet).slice(1) : 'None';
+          const pEmoji = CONFIG.EMOJI[pEval.type] || '🌀';
+          const bEmoji = CONFIG.EMOJI[bEval.type] || '🌀';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="opacity:.8">${handNo}</td>
+            <td>${betText}</td>
+            <td>${pEmoji}</td>
+            <td>${bEmoji}</td>
+            <td><span class="tag ${resultClass}">${resultText}</span></td>
+            <td><span class="tag ${deltaClass}">${deltaSign}${delta}</span></td>
+          `;
+          els.log.prepend(tr);
+        } catch (e) {
+          console.error('Error in appendLog:', e);
+          UI.setStatus('Error logging hand', 'lose');
         }
-        handNo += 1;
-        const tr = document.createElement('tr');
-        const fmt = cs => cs.map(c => CONFIG.EMOJI[c]).join(' ');
-        const deltaSign = delta > 0 ? '+' : '';
-        const deltaClass = delta > 0 ? 'win' : delta < 0 ? 'lose' : 'tie';
-        const resultText = outcome === 'player' ? 'Player' : outcome === 'banker' ? 'Banker' : 'Tie';
-        const resultClass = bet === outcome ? 'win' : 'lose';
-        tr.innerHTML = `
-          <td style="opacity:.8">${handNo}</td>
-          <td>${bet.charAt(0).toUpperCase() + bet.slice(1)}</td>
-          <td>${fmt(pCards)}</td>
-          <td>${fmt(bCards)}</td>
-          <td><span class="tag ${resultClass}">${resultText}</span></td>
-          <td><span class="tag ${deltaClass}">${deltaSign}${delta}</span></td>
-        `;
-        els.log.prepend(tr);
       },
       disableButtons(disable) {
         [els.deal, els.betPlayer, els.betBanker, els.betTie, els.reshuffle, els.reset, els.runSim].forEach(b => b.disabled = disable);
@@ -595,87 +612,91 @@
         UI.setStatus('Not enough lives to bet', 'lose');
         return;
       }
-      Deck.ensure(CONFIG.MIN_CARDS_FOR_DEAL);
-      lives -= 1;
-      UI.updateLives();
-      const pCards = [deck.pop(), deck.pop()];
-      const bCards = [deck.pop(), deck.pop()];
-      UI.updateDeck();
+      try {
+        Deck.ensure(CONFIG.MIN_CARDS_FOR_DEAL);
+        lives -= 1;
+        UI.updateLives();
+        const pCards = [deck.pop(), deck.pop()];
+        const bCards = [deck.pop(), deck.pop()];
+        UI.updateDeck();
 
-      UI.disableButtons(true);
+        UI.disableButtons(true);
 
-      // Reset to ghost cards
-      UI.renderCards(els.pCards, ['?', '?'], true);
-      UI.renderCards(els.bCards, ['?', '?'], true);
+        UI.renderCards(els.pCards, ['?', '?'], true);
+        UI.renderCards(els.bCards, ['?', '?'], true);
 
-      // Reveal cards one by one
-      const ANIMATION_DURATION = 300; // Matches CSS transition duration
-      setTimeout(() => {
-        UI.setStatus('Revealing Player card 1...', '');
-        UI.renderSingleCard(els.pCards, pCards[0], 0);
+        const ANIMATION_DURATION = 300;
         setTimeout(() => {
-          UI.setStatus('Revealing Player card 2...', '');
-          UI.renderSingleCard(els.pCards, pCards[1], 1);
+          UI.setStatus('Revealing Player card 1...', '');
+          UI.renderSingleCard(els.pCards, pCards[0], 0);
           setTimeout(() => {
-            UI.setStatus('Revealing Banker card 1...', '');
-            UI.renderSingleCard(els.bCards, bCards[0], 0);
+            UI.setStatus('Revealing Player card 2...', '');
+            UI.renderSingleCard(els.pCards, pCards[1], 1);
             setTimeout(() => {
-              UI.setStatus('Revealing Banker card 2...', '');
-              UI.renderSingleCard(els.bCards, bCards[1], 1);
+              UI.setStatus('Revealing Banker card 1...', '');
+              UI.renderSingleCard(els.bCards, bCards[0], 0);
               setTimeout(() => {
-                const pEval = Hand.evaluate(pCards);
-                const bEval = Hand.evaluate(bCards);
-                const who = Hand.compare(pEval, bEval);
+                UI.setStatus('Revealing Banker card 2...', '');
+                UI.renderSingleCard(els.bCards, bCards[1], 1);
+                setTimeout(() => {
+                  const pEval = Hand.evaluate(pCards);
+                  const bEval = Hand.evaluate(bCards);
+                  const who = Hand.compare(pEval, bEval);
 
-                stats.hands++;
-                stats[who]++;
+                  stats.hands++;
+                  stats[who]++;
 
-                let delta = -1;
-                let reward = 0;
-                let statusText = '';
-                let statusCls = '';
-                if (who === 'player') {
-                  statusText = 'Player Wins (' + pEval.label + (bEval.type === 'N' ? ' vs Neutral' : ' beats ' + bEval.label) + ')';
-                  statusCls = 'win';
-                } else if (who === 'banker') {
-                  statusText = 'Banker Wins (' + bEval.label + (pEval.type === 'N' ? ' vs Neutral' : ' beats ' + bEval.label) + ')';
-                  statusCls = 'lose';
-                } else {
-                  statusText = 'Tie (' + (pEval.type === 'N' ? 'Neutral' : pEval.label) + ')';
-                  statusCls = 'tie';
-                }
-
-                if (currentBet === who) {
-                  reward = who === 'player' ? 0.5 : who === 'banker' ? 1 : 2;
-                  if ((who === 'player' && pEval.type === 'XX') ||
-                      (who === 'banker' && bEval.type === 'XX') ||
-                      (who === 'tie' && pEval.type === 'XX' && bEval.type === 'XX')) {
-                    reward += 0.5;
-                    statusText += ' | Double All bonus! +' + reward + ' lives';
+                  let delta = -1;
+                  let reward = 0;
+                  let statusText = '';
+                  let statusCls = currentBet === who ? 'win' : 'lose';
+                  if (who === 'player') {
+                    statusText = `Player Wins (${String(pEval.label || 'Unknown')} vs ${String(bEval.label || 'Unknown')})`;
+                  } else if (who === 'banker') {
+                    statusText = `Banker Wins (${String(bEval.label || 'Unknown')} vs ${String(pEval.label || 'Unknown')})`;
                   } else {
-                    statusText += ' | Correct bet! +' + reward + ' lives';
+                    statusText = `Tie (${String(pEval.label || 'Unknown')} vs ${String(bEval.label || 'Unknown')})`;
+                    statusCls = currentBet === 'tie' ? 'win' : 'lose';
                   }
-                  delta = reward;
-                  lives += 1 + reward;
-                  statusCls = 'win';
-                } else {
-                  statusText += ' | Incorrect bet';
-                }
-                UI.updateLives();
-                UI.setStatus(statusText, statusCls);
 
-                UI.appendLog(pCards, bCards, currentBet, who, delta);
-                updateStats();
+                  if (currentBet === who) {
+                    reward = who === 'player' ? 0.5 : who === 'banker' ? 1 : 2;
+                    if ((who === 'player' && pEval.type === 'XX') ||
+                        (who === 'banker' && bEval.type === 'XX') ||
+                        (who === 'tie' && pEval.type === 'XX' && bEval.type === 'XX')) {
+                      reward += 0.5;
+                      statusText += ` | Double All bonus! +${reward} lives`;
+                    } else {
+                      statusText += ` | Correct bet! +${reward} lives`;
+                    }
+                    delta = reward;
+                    lives += 1 + reward;
+                    statusCls = 'win';
+                  } else {
+                    statusText += ' | Incorrect bet';
+                  }
+                  UI.updateLives();
+                  UI.setStatus(statusText, statusCls);
 
-                currentBet = null;
-                [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
-                UI.disableButtons(false);
-                els.deal.focus();
+                  if (currentBet) {
+                    UI.appendLog(pCards, bCards, currentBet, who, delta);
+                  }
+                  updateStats();
+
+                  currentBet = null;
+                  [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+                  UI.disableButtons(false);
+                  els.deal.focus();
+                }, ANIMATION_DURATION + 100);
               }, ANIMATION_DURATION + 100);
             }, ANIMATION_DURATION + 100);
           }, ANIMATION_DURATION + 100);
-        }, ANIMATION_DURATION + 100);
-      }, 0);
+        }, 0);
+      } catch (e) {
+        console.error('Error in deal:', e);
+        UI.setStatus('Error during deal', 'lose');
+        UI.disableButtons(false);
+      }
     }
 
     function reshuffle() {
