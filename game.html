@@ -141,9 +141,10 @@
               <li><strong>Two All cards</strong> = automatic win for that side. If both have two All cards → tie.</li>
               <li>One All + one suit → the hand becomes that <em>suit</em>.</li>
               <li>Pair of the same suit → the hand becomes that <em>suit</em>.</li>
-              <li>Two different suits → reduce using: Fire beats Air, Air beats Earth, Earth beats Water, Water beats Light, Light beats Dark, Dark beats Fire.</li>
+              <li>Two opposite suits (Fire+Water, Air+Earth, Light+Dark) → hand becomes <em>Neutral</em> (loses to any suit or Double All, ties with Neutral).</li>
+              <li>Two different non-opposite suits → reduce using: Fire beats Air, Air beats Earth, Earth beats Water, Water beats Light, Light beats Dark, Dark beats Fire.</li>
               <li>Dominance cycle: <strong>Fire > Air > Earth > Water > Light > Dark > Fire</strong>.</li>
-              <li>Compare Player vs Banker results: winning suit takes the hand; same suit → tie.</li>
+              <li>Compare Player vs Banker results: winning suit takes the hand; same suit or both Neutral → tie.</li>
               <li><strong>Betting</strong>: Before each hand, bet 1 life on Player, Banker, or Tie. If wrong, lose 1 life.</li>
               <li>If correct: Player bet gains +0.5 life (+1 if Player wins with two All cards), Banker +1 life (+1.5 if Banker wins with two All cards), Tie +2 lives (+2.5 if Tie with two All cards each).</li>
               <li>Start with 3 lives. Max lives: 7.</li>
@@ -170,7 +171,7 @@
   <script>
     // --- Card & Deck model ----------------------------------------------------
     const EMOJI = { F: '🔥', W: '💧', E: '🌍', A: '💨', L: '💡', D: '🌑', X: '🌟' };
-    const NAME  = { F: 'Fire', W: 'Water', E: 'Earth', A: 'Air', L: 'Light', D: 'Dark', X: 'All' };
+    const NAME  = { F: 'Fire', W: 'Water', E: 'Earth', A: 'Air', L: 'Light', D: 'Dark', X: 'All', N: 'Neutral' };
 
     function makeDeck(){
       const deck = [];
@@ -195,7 +196,17 @@
       if(c1==='X' && c2!=='X') return { type: c2, label: NAME[c2] };
       if(c2==='X' && c1!=='X') return { type: c1, label: NAME[c1] };
       if(c1===c2) return { type: c1, label: NAME[c1] };
-      // Different non-All cards → resolve via dominance cycle
+
+      // Check for opposites (cancels to neutral)
+      function isOpposite(a, b) {
+        const pairs = [['L', 'D'], ['F', 'W'], ['A', 'E']]; // Light-Dark, Fire-Water, Air-Earth
+        return pairs.some(p => p.includes(a) && p.includes(b));
+      }
+      if (isOpposite(c1, c2)) {
+        return { type: 'N', label: 'Neutral' };
+      }
+
+      // Different non-All, non-opposite cards → resolve via dominance cycle
       const beats = { F: 'A', A: 'E', E: 'W', W: 'L', L: 'D', D: 'F' };
       const winner = beats[c1]===c2 ? c1 : c2;
       return { type: winner, label: NAME[winner] };
@@ -206,6 +217,12 @@
       if(p.type==='XX' && b.type==='XX') return 'tie';
       if(p.type==='XX') return 'player';
       if(b.type==='XX') return 'banker';
+
+      // Handle neutral (loses to any suit or Double All, ties with neutral)
+      if (p.type === 'N' && b.type === 'N') return 'tie';
+      if (p.type === 'N') return 'banker';
+      if (b.type === 'N') return 'player';
+
       if(p.type===b.type) return 'tie';
       const beats = { F: 'A', A: 'E', E: 'W', W: 'L', L: 'D', D: 'F' };
       return beats[p.type]===b.type ? 'player' : 'banker';
@@ -348,13 +365,13 @@
                 let statusText = '';
                 let statusCls = '';
                 if (who === 'player') {
-                  statusText = 'Player Wins (' + pEval.label + ' beats ' + bEval.label + ')';
+                  statusText = 'Player Wins (' + pEval.label + (bEval.type === 'N' ? ' vs Neutral' : ' beats ' + bEval.label) + ')';
                   statusCls = 'win';
                 } else if (who === 'banker') {
-                  statusText = 'Banker Wins (' + bEval.label + ' beats ' + pEval.label + ')';
+                  statusText = 'Banker Wins (' + bEval.label + (pEval.type === 'N' ? ' vs Neutral' : ' beats ' + pEval.label) + ')';
                   statusCls = 'lose';
                 } else {
-                  statusText = 'Tie (' + pEval.label + ')';
+                  statusText = 'Tie (' + (pEval.type === 'N' ? 'Neutral' : pEval.label) + ')';
                   statusCls = 'tie';
                 }
 
@@ -385,10 +402,10 @@
                 currentBet = null;
                 [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
                 els.deal.disabled = false;
-              }, 625); // Delay after banker card 2
-            }, 625); // Delay after banker card 1
-          }, 625); // Delay after player card 2
-        }, 625); // Delay after player card 1
+              }, 500); // Delay after banker card 2
+            }, 500); // Delay after banker card 1
+          }, 500); // Delay after player card 2
+        }, 500); // Delay after player card 1
       }, 0); // Start immediately
     }
 
