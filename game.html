@@ -156,6 +156,7 @@
               <button class="secondary" id="bet-tie" tabindex="0" aria-label="Bet on a Tie">Bet Tie</button>
               <button id="deal" tabindex="0" aria-label="Deal a new hand">Deal Hand</button>
               <button class="secondary" id="reshuffle" tabindex="0" aria-label="Reshuffle the deck">Reshuffle</button>
+              <button class="secondary" id="run-sim" tabindex="0" aria-label="Run simulation for win rates">Run Sim</button>
               <button class="ghost" id="reset" tabindex="0" aria-label="Reset the game to default state">Reset Game</button>
               <button class="ghost" id="toggle-contrast" tabindex="0" aria-label="Toggle high contrast mode">High Contrast</button>
             </div>
@@ -195,6 +196,21 @@
             </div>
             <div class="small">Tip: The deck auto-reshuffles when it runs low. Use <em>Reset Game</em> to return to defaults or <em>Reshuffle</em> to keep your lives but refresh the deck.</div>
           </div>
+
+          <div class="stack">
+            <strong>Statistics Tracking</strong>
+            <div id="stats">No hands played yet.</div>
+          </div>
+
+          <div class="stack">
+            <strong>Visual Cycle Diagram</strong>
+            <div id="cycle-diag" style="font-size: var(--text-base); white-space: nowrap; overflow: auto;"></div>
+          </div>
+
+          <div class="stack">
+            <strong>Simulation Results for Hand Win Rates</strong>
+            <div id="sim-content">Click "Run Sim" to compute.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -223,6 +239,8 @@
       ANIMATION_DELAY: 500,
       TOTAL_ANIMATION_TIME: 2000
     };
+
+    const suitIndex = { W: 0, F: 1, D: 2, A: 3, E: 4, L: 5 };
 
     // --- Deck Management ------------------------------------------------------
     const Deck = {
@@ -266,7 +284,18 @@
           return { type: 'N', label: 'Neutral' };
         }
 
-        const winner = CONFIG.BEATS[c1] === c2 ? c1 : c2;
+        const p1 = suitIndex[c1];
+        const p2 = suitIndex[c2];
+        const dist12 = (p2 - p1 + 6) % 6;
+        const dist21 = (p1 - p2 + 6) % 6;
+        let winner;
+        if (dist12 < dist21) {
+          winner = c1;
+        } else if (dist21 < dist12) {
+          winner = c2;
+        } else {
+          winner = 'N';
+        }
         return { type: winner, label: CONFIG.NAME[winner] };
       },
       compare(p, b) {
@@ -288,6 +317,7 @@
     let lives = 3;
     let handNo = 0;
     let currentBet = null;
+    let stats = { hands: 0, player: 0, banker: 0, tie: 0 };
 
     // --- UI Elements and Helpers ----------------------------------------------
     const els = {
@@ -304,6 +334,7 @@
       betPlayer: document.getElementById('bet-player'),
       betBanker: document.getElementById('bet-banker'),
       betTie: document.getElementById('bet-tie'),
+      runSim: document.getElementById('run-sim'),
       toggleContrast: document.getElementById('toggle-contrast'),
       gameOver: document.getElementById('game-over'),
       restart: document.getElementById('restart')
@@ -394,9 +425,54 @@
         els.log.prepend(tr);
       },
       disableButtons(disable) {
-        [els.deal, els.betPlayer, els.betBanker, els.betTie, els.reshuffle, els.reset].forEach(b => b.disabled = disable);
+        [els.deal, els.betPlayer, els.betBanker, els.betTie, els.reshuffle, els.reset, els.runSim].forEach(b => b.disabled = disable);
       }
     };
+
+    // --- Statistics Update ----------------------------------------------------
+    function updateStats() {
+      const sdiv = document.getElementById('stats');
+      if (stats.hands === 0) {
+        sdiv.innerHTML = 'No hands played yet.';
+      } else {
+        sdiv.innerHTML = `
+          Total Hands: ${stats.hands}<br>
+          Player Wins: ${stats.player} (${(stats.player / stats.hands * 100).toFixed(2)}%)<br>
+          Banker Wins: ${stats.banker} (${(stats.banker / stats.hands * 100).toFixed(2)}%)<br>
+          Ties: ${stats.tie} (${(stats.tie / stats.hands * 100).toFixed(2)}%)
+        `;
+      }
+    }
+
+    // --- Simulation -----------------------------------------------------------
+    let isSimRunning = false;
+    function runSim() {
+      if (isSimRunning) return;
+      isSimRunning = true;
+      UI.disableButtons(true);
+      UI.setStatus('Running simulation...', 'tie');
+      setTimeout(() => {
+        const N = 100000;
+        let counts = { player: 0, banker: 0, tie: 0 };
+        for (let i = 0; i < N; i++) {
+          let tempDeck = Deck.make();
+          let pCards = [tempDeck.pop(), tempDeck.pop()];
+          let bCards = [tempDeck.pop(), tempDeck.pop()];
+          let pEval = Hand.evaluate(pCards);
+          let bEval = Hand.evaluate(bCards);
+          let who = Hand.compare(pEval, bEval);
+          counts[who]++;
+        }
+        document.getElementById('sim-content').innerHTML = `
+          Player Win Rate: ${(counts.player / N * 100).toFixed(2)}%<br>
+          Banker Win Rate: ${(counts.banker / N * 100).toFixed(2)}%<br>
+          Tie Rate: ${(counts.tie / N * 100).toFixed(2)}%
+        `;
+        UI.setStatus('Simulation complete', 'win');
+        isSimRunning = false;
+        UI.disableButtons(false);
+      }, 0);
+    }
 
     // --- Game Logic -----------------------------------------------------------
     function deal() {
@@ -440,6 +516,9 @@
                 const bEval = Hand.evaluate(bCards);
                 const who = Hand.compare(pEval, bEval);
 
+                stats.hands++;
+                stats[who]++;
+
                 let delta = -1;
                 let reward = 0;
                 let statusText = '';
@@ -475,6 +554,7 @@
                 UI.setStatus(statusText, statusCls);
 
                 UI.appendLog(pCards, bCards, currentBet, who, delta);
+                updateStats();
 
                 currentBet = null;
                 [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
@@ -506,6 +586,9 @@
       UI.renderCards(els.pCards, ['?', '?'], true);
       UI.renderCards(els.bCards, ['?', '?'], true);
       els.gameOver.style.display = 'none';
+      stats = { hands: 0, player: 0, banker: 0, tie: 0 };
+      updateStats();
+      document.getElementById('sim-content').innerHTML = 'Click "Run Sim" to compute.';
     }
 
     // --- Event Listeners ------------------------------------------------------
@@ -532,19 +615,20 @@
     els.reshuffle.addEventListener('click', reshuffle);
     els.reset.addEventListener('click', reset);
     els.restart.addEventListener('click', reset);
+    els.runSim.addEventListener('click', runSim);
     els.toggleContrast.addEventListener('click', () => {
       document.documentElement.classList.toggle('high-contrast');
     });
 
     // Keyboard navigation
-    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset, els.toggleContrast, els.restart].forEach(btn => {
+    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset, els.toggleContrast, els.restart, els.runSim].forEach(btn => {
       btn.addEventListener('keydown', e => {
         if (e.key === 'Enter') btn.click();
       });
     });
 
     // Touch support
-    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset, els.toggleContrast, els.restart].forEach(btn => {
+    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset, els.toggleContrast, els.restart, els.runSim].forEach(btn => {
       btn.addEventListener('touchstart', e => {
         e.preventDefault();
         btn.click();
@@ -554,6 +638,8 @@
     // Initial setup
     UI.updateDeck();
     UI.updateLives();
+    updateStats();
+    document.getElementById('cycle-diag').innerHTML = 'Water 💧 > Fire 🔥 > Dark 🌑 > Air 💨 > Earth 🌍 > Light 💡 > Water 💧';
   </script>
 </body>
 </html>
