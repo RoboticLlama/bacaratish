@@ -63,12 +63,52 @@
     .label { font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); opacity: .9; font-size: var(--text-base); }
 
     .cards { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-height: 90px; }
-    .card { width: 80px; height: 108px; border-radius: var(--border-radius); background: var(--card-bg); border: 1px solid rgba(255,255,255,.08);
-      display: grid; place-items: center; font-size: 36px; position: relative; box-shadow: 0 8px 16px rgba(0,0,0,.25);
-      transform: translateY(0) rotateY(0deg); transform-style: preserve-3d; transition: transform .3s ease, box-shadow .15s ease; }
-    .card:hover { transform: translateY(-2px) rotateY(0deg); box-shadow: 0 12px 22px rgba(0,0,0,.32); }
-    .card.revealing { transform: rotateY(180deg); }
-    @media (max-width: 600px) { .card { width: 64px; height: 86px; font-size: 28px; } }
+    .card {
+      width: 80px;
+      height: 108px;
+      border-radius: var(--border-radius);
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,.08);
+      display: grid;
+      place-items: center;
+      font-size: 36px;
+      position: relative;
+      box-shadow: 0 8px 16px rgba(0,0,0,.25);
+      transform-style: preserve-3d;
+      transition: transform 0.3s ease, box-shadow 0.15s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 22px rgba(0,0,0,.32);
+    }
+    .card.revealing {
+      transform: rotateY(180deg);
+    }
+    .card .front, .card .back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      backface-visibility: hidden;
+      border-radius: var(--border-radius);
+    }
+    .card .front {
+      transform: rotateY(0deg);
+    }
+    .card .back {
+      background: var(--card-bg);
+      transform: rotateY(180deg);
+    }
+    .card.revealing .front {
+      transform: rotateY(180deg);
+    }
+    .card.revealing .back {
+      transform: rotateY(0deg);
+    }
+    @media (max-width: 600px) {
+      .card { width: 64px; height: 86px; font-size: 28px; }
+    }
     .ghost { opacity: .28; border-style: dashed; }
 
     .card.fire { background: linear-gradient(135deg, #ff6b6b, #ff8e53); }
@@ -366,17 +406,24 @@
       renderCards(node, cards, isGhost = false) {
         try {
           const fragment = document.createDocumentFragment();
-          cards.forEach((c, i) => {
-            if (!CONFIG.EMOJI[c]) throw new Error(`Invalid card type: ${c}`);
-            const div = document.createElement('div');
-            div.className = 'card' + (isGhost ? ' ghost' : ` ${CONFIG.NAME[c].toLowerCase()}`);
-            div.textContent = CONFIG.EMOJI[c];
-            if (!isGhost) {
+          if (isGhost) {
+            cards.forEach(() => {
+              const div = document.createElement('div');
+              div.className = 'card ghost';
+              div.textContent = '🃏';
+              fragment.appendChild(div);
+            });
+          } else {
+            cards.forEach((c, i) => {
+              if (!CONFIG.EMOJI[c]) throw new Error(`Invalid card type: ${c}`);
+              const div = document.createElement('div');
+              div.className = `card ${CONFIG.NAME[c].toLowerCase()}`;
+              div.textContent = CONFIG.EMOJI[c];
               div.setAttribute('aria-label', `Card ${i + 1}: ${CONFIG.NAME[c]}`);
               div.tabIndex = 0;
-            }
-            fragment.appendChild(div);
-          });
+              fragment.appendChild(div);
+            });
+          }
           node.innerHTML = '';
           node.appendChild(fragment);
         } catch (e) {
@@ -388,16 +435,20 @@
         try {
           if (!CONFIG.EMOJI[card]) throw new Error(`Invalid card type: ${card}`);
           const div = document.createElement('div');
-          div.className = `card revealing ${CONFIG.NAME[card].toLowerCase()}`;
-          div.textContent = CONFIG.EMOJI[card];
-          div.setAttribute('aria-label', `Card ${index + 1}: ${CONFIG.NAME[card]}`);
-          div.tabIndex = 0;
+          div.className = `card ${CONFIG.NAME[card].toLowerCase()}`;
+          div.innerHTML = `
+            <div class="front" aria-label="Card ${index + 1}: ${CONFIG.NAME[card]}" tabindex="0">${CONFIG.EMOJI[card]}</div>
+            <div class="back">🃏</div>
+          `;
           if (node.children[index]) {
             node.replaceChild(div, node.children[index]);
           } else {
             node.appendChild(div);
           }
-          setTimeout(() => div.classList.remove('revealing'), 300);
+          // Trigger flip animation after a delay to ensure DOM update
+          setTimeout(() => {
+            div.classList.add('revealing');
+          }, 50);
         } catch (e) {
           console.error('Error rendering single card:', e);
           this.setStatus('Error rendering card', 'lose');
@@ -527,7 +578,7 @@
                   statusText = 'Player Wins (' + pEval.label + (bEval.type === 'N' ? ' vs Neutral' : ' beats ' + bEval.label) + ')';
                   statusCls = 'win';
                 } else if (who === 'banker') {
-                  statusText = 'Banker Wins (' + bEval.label + (pEval.type === 'N' ? ' vs Neutral' : ' beats ' + pEval.label) + ')';
+                  statusText = 'Banker Wins (' + bEval.label + (pEval.type === 'N' ? ' vs Neutral' : ' beats ' + bEval.label) + ')';
                   statusCls = 'lose';
                 } else {
                   statusText = 'Tie (' + (pEval.type === 'N' ? 'Neutral' : pEval.label) + ')';
