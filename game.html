@@ -223,7 +223,7 @@
               <li>Two opposite suits (Fire+Water, Air+Earth, Light+Dark) → hand becomes <em>Neutral</em> (loses to any suit or Double All, ties with Neutral).</li>
               <li>Two different non-opposite suits → reduce using: Water beats Fire, Fire beats Dark, Dark beats Air, Air beats Earth, Earth beats Light, Light beats Water.</li>
               <li>Dominance cycle: <strong>Water > Fire > Dark > Air > Earth > Light > Water</strong>.</li>
-              <li>Compare Player vs Banker results: winning suit takes the hand; same suit or both Neutral → tie.</li>
+              <li>Compare Player vs Banker results: the suit with the shorter directional distance in the dominance cycle beats the other and takes the hand; if distances are equal or both Neutral/same suit, it's a tie.</li>
               <li><strong>Betting</strong>: Before each hand, bet 1 life on Player, Banker, or Tie. If wrong, lose 1 life.</li>
               <li>If correct: Player bet gains +0.5 life (+1 if Player wins with two All cards), Banker +1 life (+1.5 if Banker wins with two All cards), Tie +2 lives (+2.5 if Tie with two All cards each).</li>
               <li>Start with 3 lives. Max lives: 7.</li>
@@ -357,7 +357,13 @@
         if (b.type === 'N') return 'player';
 
         if (p.type === b.type) return 'tie';
-        return CONFIG.BEATS[p.type] === b.type ? 'player' : 'banker';
+        const pIndex = suitIndex[p.type];
+        const bIndex = suitIndex[b.type];
+        const distPB = (bIndex - pIndex + 6) % 6;
+        const distBP = (pIndex - bIndex + 6) % 6;
+        if (distPB < distBP) return 'player';
+        if (distBP < distPB) return 'banker';
+        return 'tie';
       }
     };
 
