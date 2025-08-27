@@ -174,8 +174,8 @@
               <li>One All + one suit → the hand becomes that <em>suit</em>.</li>
               <li>Pair of the same suit → the hand becomes that <em>suit</em>.</li>
               <li>Two opposite suits (Fire+Water, Air+Earth, Light+Dark) → hand becomes <em>Neutral</em> (loses to any suit or Double All, ties with Neutral).</li>
-              <li>Two different non-opposite suits → reduce using: Fire beats Air, Air beats Earth, Earth beats Water, Water beats Light, Light beats Dark, Dark beats Fire.</li>
-              <li>Dominance cycle: <strong>Fire > Air > Earth > Water > Light > Dark > Fire</strong>.</li>
+              <li>Two different non-opposite suits → reduce using: Water beats Fire, Fire beats Dark, Dark beats Air, Air beats Earth, Earth beats Light, Light beats Water.</li>
+              <li>Dominance cycle: <strong>Water > Fire > Dark > Air > Earth > Light > Water</strong>.</li>
               <li>Compare Player vs Banker results: winning suit takes the hand; same suit or both Neutral → tie.</li>
               <li><strong>Betting</strong>: Before each hand, bet 1 life on Player, Banker, or Tie. If wrong, lose 1 life.</li>
               <li>If correct: Player bet gains +0.5 life (+1 if Player wins with two All cards), Banker +1 life (+1.5 if Banker wins with two All cards), Tie +2 lives (+2.5 if Tie with two All cards each).</li>
@@ -213,7 +213,7 @@
     const CONFIG = {
       EMOJI: { F: '🔥', W: '💧', E: '🌍', A: '💨', L: '💡', D: '🌑', X: '🌟' },
       NAME: { F: 'Fire', W: 'Water', E: 'Earth', A: 'Air', L: 'Light', D: 'Dark', X: 'All', N: 'Neutral' },
-      BEATS: { F: 'A', A: 'E', E: 'W', W: 'L', L: 'D', D: 'F' },
+      BEATS: { W: 'F', F: 'D', D: 'A', A: 'E', E: 'L', L: 'W' },
       OPPOSITES: [['L', 'D'], ['F', 'W'], ['A', 'E']],
       DECK: { F: 6, W: 6, E: 6, A: 6, L: 6, D: 6, X: 2 },
       TOTAL_DECK_SIZE: 38,
