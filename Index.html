@@ -1,1 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delta Rune</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --panel: #161a2b;
+      --accent: #7c5cff;
+      --accent-2: #00d2ff;
+      --text: #ecf0ff;
+      --muted: #a7b0d6;
+      --win: #20c997;
+      --lose: #ff6b6b;
+      --tie: #ffd43b;
+      --card-bg: linear-gradient(135deg, #1c2242, #282f5b);
+      --border-radius: 12px;
+      --border-radius-lg: 20px;
+      --shadow: 0 6px 16px rgba(0,0,0,.25);
+      --shadow-lg: 0 10px 30px rgba(0,0,0,.35);
+      --text-base: clamp(11px, 1.6vw, 13px);
+      --text-lg: clamp(16px, 2.5vw, 24px);
+      --spacing-sm: clamp(8px, 1.5vw, 12px);
+      --spacing-md: clamp(12px, 2vw, 18px);
+    }
+    :root.high-contrast {
+      --bg: #000;
+      --panel: #222;
+      --text: #fff;
+      --muted: #ccc;
+      --card-bg: #333;
+      --accent: #ff0;
+      --accent-2: #0ff;
+      --win: #0f0;
+      --lose: #f00;
+      --tie: #ff0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+      Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial; color: var(--text);
+      background: radial-gradient(1200px 800px at 20% 10%, #1c2242 0%, #0f1220 50%, #0b0e19 100%);
+      min-height: 100svh; display: grid; place-items: center; padding: var(--spacing-md);
+      position: relative;
+    }
+    .app { width: min(1100px, 96vw); }
+    .panel {
+      background: color-mix(in oklab, var(--panel), transparent 5%);
+      border: 1px solid color-mix(in oklab, var(--accent), transparent 80%);
+      border-radius: var(--border-radius-lg); padding: var(--spacing-md) var(--spacing-md) 8px;
+      box-shadow: var(--shadow-lg); backdrop-filter: blur(6px);
+    }
+    h1 { margin: 0 0 6px; font-size: var(--text-lg); letter-spacing: .2px; }
+    p, li { color: var(--muted); font-size: var(--text-base); }
 
+    .row { display: grid; grid-template-columns: 1fr; gap: var(--spacing-sm); }
+    @media (min-width: 860px) { .row { grid-template-columns: 1.2fr .8fr; } }
+
+    .board { display: grid; gap: var(--spacing-sm); }
+    .lane { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: var(--spacing-sm); }
+    @media (max-width: 600px) { .lane { grid-template-columns: 80px 1fr; gap: 8px; } }
+    .label { font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); opacity: .9; font-size: var(--text-base); }
+
+    .cards { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-height: 90px; }
+    .card {
+      width: 80px;
+      height: 108px;
+      border-radius: var(--border-radius);
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,.08);
+      display: grid;
+      place-items: center;
+      font-size: 36px;
+      position: relative;
+      box-shadow: 0 8px 16px rgba(0,0,0,.25);
+      transform-style: preserve-3d;
+      transition: transform 0.3s ease, box-shadow 0.15s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 22px rgba(0,0,0,.32);
+    }
+    .card .front, .card .back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      backface-visibility: hidden;
+      border-radius: var(--border-radius);
+    }
+    .card .front {
+      transform: rotateY(180deg);
+    }
+    .card .back {
+      background: var(--card-bg);
+      transform: rotateY(0deg);
+    }
+    .card.revealing .front {
+      transform: rotateY(0deg);
+    }
+    .card.revealing .back {
+      transform: rotateY(180deg);
+    }
+    @media (max-width: 600px) {
+      .card { width: 64px; height: 86px; font-size: 28px; }
+    }
+    .ghost { opacity: .28; border-style: dashed; }
+
+    .card.fire { background: linear-gradient(135deg, #ff6b6b, #ff8e53); }
+    .card.water { background: linear-gradient(135deg, #4dabf7, #74c0fc); }
+    .card.earth { background: linear-gradient(135deg, #51cf66, #82c91e); }
+    .card.air { background: linear-gradient(135deg, #ced4da, #e9ecef); }
+    .card.light { background: linear-gradient(135deg, #ffd43b, #ffe066); }
+    .card.dark { background: linear-gradient(135deg, #343a40, #495057); }
+    .card.all { background: linear-gradient(135deg, #ffeb3b, #f8f0ff); }
+
+    .status { font-weight: 800; letter-spacing: .6px; text-transform: uppercase; font-size: var(--text-base); }
+    .status.win { color: var(--win); }
+    .status.lose { color: var(--lose); }
+    .status.tie { color: var(--tie); }
+
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button {
+      background: linear-gradient(180deg, color-mix(in oklab, var(--accent), white 12%), var(--accent));
+      color: white; border: 0; padding: 10px 14px; border-radius: var(--border-radius); font-weight: 700; cursor: pointer;
+      box-shadow: var(--shadow); transition: transform .08s ease, box-shadow .12s ease, opacity .15s ease;
+      min-height: 48px; font-size: var(--text-base); touch-action: manipulation;
+    }
+    button.secondary { background: #262c4f; box-shadow: 0 5px 12px rgba(0,0,0,.25); }
+    button.ghost { background: transparent; border: 1px solid #343b6b; color: var(--muted); box-shadow: none; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    button.active { background: linear-gradient(180deg, color-mix(in oklab, var(--win), white 12%), var(--win)); box-shadow: 0 6px 16px rgba(32,201,151,.35); transform: scale(1.05); }
+    .kpi { display: grid; grid-auto-flow: column; gap: var(--spacing-sm); align-items: center; }
+    .pill { background: #1a1f3f; border: 1px solid #2a3171; border-radius: 999px; padding: 6px 10px; font-weight: 700; font-size: var(--text-base); }
+
+    .run-sim-container {
+      position: fixed;
+      bottom: var(--spacing-md);
+      left: var(--spacing-md);
+      z-index: 10;
+    }
+    button.run-sim {
+      background: transparent;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: var(--text-base);
+      border-radius: var(--border-radius);
+      box-shadow: none;
+      transition: all .15s ease;
+    }
+    button.run-sim:hover {
+      background: color-mix(in oklab, var(--accent), transparent 90%);
+      transform: translateY(-2px);
+    }
+    button.run-sim:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      border-color: var(--muted);
+      color: var(--muted);
+    }
+
+    .right { display: grid; gap: var(--spacing-sm); }
+    .stack { display: grid; gap: 8px; }
+    .history { max-height: 280px; overflow: auto; border-radius: var(--border-radius); border: 1px solid #29306a; background: rgba(18,22,42,.6); }
+    .history table { width: 100%; border-collapse: collapse; font-size: clamp(10px, 1.4vw, 11px); }
+    .history th, .history td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .history tr:last-child td { border-bottom: 0; }
+    .history td:nth-child(3), .history td:nth-child(4) {
+      max-width: 120px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    @media (max-width: 600px) {
+      .history { overflow-x: auto; }
+      .history table { min-width: 100%; }
+    }
+    .tag { padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: clamp(10px, 1.5vw, 11px); text-transform: uppercase; letter-spacing: .4px; }
+    .tag.win { background: color-mix(in oklab, var(--win), transparent 80%); color: var(--win); }
+    .tag.lose { background: color-mix(in oklab, var(--lose), transparent 80%); color: var(--lose); }
+    .tag.tie { background: color-mix(in oklab, var(--tie), transparent 80%); color: var(--tie); }
+
+    .small { font-size: clamp(10px, 1.5vw, 11px); color: var(--muted); }
+    .rules { line-height: 1.5; }
+    .divider { height: 1px; background: rgba(255,255,255,.08); margin: 6px 0 0; }
+    .deckbar { height: 6px; background: #22284a; border-radius: 999px; overflow: hidden; }
+    .deckbar > div { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 100%; }
+
+    #game-over { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.8); place-items: center; z-index: 10; }
+    #game-over .panel { text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel">
+      <h1>Delta Rune</h1>
+      <div class="row">
+        <div class="board">
+          <div class="lane">
+            <div class="label">Player</div>
+            <div class="cards" id="player-cards" aria-live="polite">
+              <div class="card ghost">🃏</div>
+              <div class="card ghost">🃏</div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="label">Banker</div>
+            <div class="cards" id="banker-cards" aria-live="polite">
+              <div class="card ghost">🃏</div>
+              <div class="card ghost">🃏</div>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap;">
+            <div class="kpi">
+              <div class="pill" aria-live="polite">Lives: <span id="lives">3</span></div>
+              <div class="pill" aria-live="polite">Deck: <span id="deck-count">38</span> cards</div>
+              <div class="pill status" id="round-status" aria-live="polite">Ready</div>
+            </div>
+            <div class="controls">
+              <button class="secondary" id="bet-player" tabindex="0" aria-label="Bet on Player to win">Bet Player</button>
+              <button class="secondary" id="bet-banker" tabindex="0" aria-label="Bet on Banker to win">Bet Banker</button>
+              <button class="secondary" id="bet-tie" tabindex="0" aria-label="Bet on a Tie">Bet Tie</button>
+              <button id="deal" tabindex="0" aria-label="Deal a new hand">Deal Hand</button>
+              <button class="secondary" id="reshuffle" tabindex="0" aria-label="Reshuffle the deck">Reshuffle</button>
+              <button class="ghost" id="reset" tabindex="0" aria-label="Reset the game to default state">Reset Game</button>
+              <button class="ghost" id="toggle-contrast" tabindex="0" aria-label="Toggle high contrast mode">High Contrast</button>
+            </div>
+          </div>
+
+          <div class="deckbar"><div id="deckbar-fill"></div></div>
+        </div>
+
+        <div class="right">
+          <div class="stack rules">
+            <strong>Rules</strong>
+            <ul>
+              <li>Deck: <strong>38 cards</strong> — 6 Fire, 6 Water, 6 Earth, 6 Air, 6 Light, 6 Dark, 2 All.</li>
+              <li>Each side (Player, Banker) is dealt <strong>two cards</strong>.</li>
+              <li>Card values: Dark=1, Water=2, Earth=3, Air=4, Fire=5, Light=6.</li>
+              <li>Hand evaluation:
+                <ul>
+                  <li>Two All cards = automatic win (Double All, 🌟). If both sides have Double All → Tie.</li>
+                  <li>One All + one suit = double the suit’s value (e.g., All + Dark = 2 × 1 = 2).</li>
+                  <li>Opposite suits (Fire+Water, Air+Earth, Light+Dark) = Neutral (🌀, value=0).</li>
+                  <li>Other pairs: Sum values, map to suit via (sum-1) % 6: 0=Dark, 1=Water, 2=Earth, 3=Air, 4=Fire, 5=Light.</li>
+                </ul>
+              </li>
+              <li>(Compare effective suits using hierarchy: <strong>Light 💡 > Fire 🔥 > Air 💨 > Earth 🌍 > Water 💧 > Dark 🌑)</strong>. Higher suit wins, shown as [Player Emoji] > [Banker Emoji] or [Player Emoji] == [Banker Emoji] for ties. Neutral (🌀) loses to any suit or Double All (🌟), ties with Neutral (🌀).</li>
+              <li><strong>Betting</strong>: Bet 1 life on Player, Banker, or Tie before each hand. Incorrect bet loses 1 life.</li>
+              <li>Correct bet rewards: Player +0.5 life (+1 if Double All), Banker +1 life (+1.5 if Double All), Tie +2 lives (+2.5 if both Double All).</li>
+              <li>Start with 3 lives. Max lives: 7.</li>
+            </ul>
+          </div>
+
+          <div class="stack">
+            <strong>History</strong>
+            <div class="history">
+              <table>
+                <thead>
+                  <tr><th>#</th><th>Bet</th><th>Player</th><th>Banker</th><th>Result</th><th>Δ Lives</th></tr>
+                </thead>
+                <tbody id="log" aria-live="polite"></tbody>
+              </table>
+            </div>
+            <div class="small">Tip: The deck auto-reshuffles when it runs low. Use <em>Reset Game</em> to return to defaults or <em>Reshuffle</em> to keep your lives but refresh the deck.</div>
+          </div>
+
+          <div class="stack">
+            <strong>Statistics Tracking</strong>
+            <div id="stats">No hands played yet.</div>
+          </div>
+
+          <div class="stack">
+            <strong>Visual Hierarchy Diagram</strong>
+            <div id="cycle-diag" style="font-size: var(--text-base); white-space: nowrap; overflow: auto;">
+              Light 💡 > Fire 🔥 > Air 💨 > Earth 🌍 > Water 💧 > Dark 🌑
+            </div>
+          </div>
+
+          <div class="stack">
+            <strong>Simulation Results for Hand Win Rates</strong>
+            <div id="sim-content">Click the train to compute.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="run-sim-container">
+    <button class="run-sim" id="run-sim" tabindex="0" aria-label="Run simulation for win rates">🚂</button>
+  </div>
+
+  <div id="game-over">
+    <div class="panel">
+      <h1>Game Over</h1>
+      <p>You've run out of lives!</p>
+      <button id="restart" tabindex="0" aria-label="Restart the game">Restart Game</button>
+    </div>
+  </div>
+
+  <script>
+    // --- Constants ------------------------------------------------------------
+    const CONFIG = {
+      EMOJI: { F: '🔥', W: '💧', E: '🌍', A: '💨', L: '💡', D: '🌑', X: '🌟', N: '🌀' },
+      NAME: { F: 'Fire', W: 'Water', E: 'Earth', A: 'Air', L: 'Light', D: 'Dark', X: 'All', N: 'Neutral' },
+      VALUES: { D: 1, W: 2, E: 3, A: 4, F: 5, L: 6 },
+      SUITS_ORDER: ['D', 'W', 'E', 'A', 'F', 'L'],
+      OPPOSITES: [['L', 'D'], ['F', 'W'], ['A', 'E']],
+      DECK: { F: 6, W: 6, E: 6, A: 6, L: 6, D: 6, X: 2 },
+      TOTAL_DECK_SIZE: 38,
+      MAX_LIVES: 7,
+      MIN_CARDS_FOR_DEAL: 4,
+      MAX_HISTORY_ENTRIES: 50,
+      ANIMATION_DELAY: 350,
+      TOTAL_ANIMATION_TIME: 1600
+    };
+
+    const suitIndex = { D: 0, W: 1, E: 2, A: 3, F: 4, L: 5 };
+
+    // --- Deck Management ------------------------------------------------------
+    const Deck = {
+      make() {
+        const deck = [];
+        for (let suit in CONFIG.DECK) {
+          for (let i = 0; i < CONFIG.DECK[suit]; i++) deck.push(suit);
+        }
+        if (deck.length !== CONFIG.TOTAL_DECK_SIZE) {
+          throw new Error('Invalid deck size: Expected 38 cards');
+        }
+        return this.shuffle(deck);
+      },
+      shuffle(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      },
+      ensure(nNeeded) {
+        if (deck.length < nNeeded) {
+          deck = this.make();
+          UI.updateDeck();
+          UI.setStatus('Auto-reshuffle', 'tie');
+        }
+      }
+    };
+
+    // --- Hand Evaluation ------------------------------------------------------
+    const Hand = {
+      evaluate(cards) {
+        if (!CONFIG.EMOJI[cards[0]] || !CONFIG.EMOJI[cards[1]]) {
+          throw new Error(`Invalid card types: ${cards[0]}, ${cards[1]}`);
+        }
+        const sortedCards = [...cards].sort();
+        let val = 0;
+        let label = '';
+        if (cards.includes('X')) {
+          if (cards[0] === 'X' && cards[1] === 'X') {
+            return { type: 'XX', label: 'Double All' };
+          }
+          const other = cards.find(c => c !== 'X');
+          val = 2 * CONFIG.VALUES[other];
+          label = `All + ${CONFIG.NAME[other]} (2x) = ${val}`;
+        } else {
+          const isOpposite = CONFIG.OPPOSITES.some(pair =>
+            (sortedCards[0] === pair[0] && sortedCards[1] === pair[1]) ||
+            (sortedCards[0] === pair[1] && sortedCards[1] === pair[0])
+          );
+          if (isOpposite) {
+            val = 0;
+            label = `${CONFIG.NAME[cards[0]]} + ${CONFIG.NAME[cards[1]]} = 0 (Neutral, opposites)`;
+          } else {
+            val = CONFIG.VALUES[cards[0]] + CONFIG.VALUES[cards[1]];
+            label = `${CONFIG.NAME[cards[0]]} + ${CONFIG.NAME[cards[1]]} = ${val}`;
+          }
+        }
+        let type;
+        if (val === 0) {
+          type = 'N';
+          label += ' → Neutral';
+        } else {
+          const index = (val - 1) % 6;
+          type = CONFIG.SUITS_ORDER[index];
+          label += ` → ${CONFIG.NAME[type]}`;
+        }
+        return { type, label };
+      },
+      compare(p, b) {
+        if (p.type === 'XX' && b.type === 'XX') return 'tie';
+        if (p.type === 'XX') return 'player';
+        if (b.type === 'XX') return 'banker'; // Fixed: Changed smart quotes to straight quotes
+        if (p.type === 'N' && b.type === 'N') return 'tie';
+        if (p.type === 'N') return 'banker';
+        if (b.type === 'N') return 'player';
+        if (p.type === b.type) return 'tie';
+        const indexP = suitIndex[p.type];
+        const indexB = suitIndex[b.type];
+        if (indexP > indexB) return 'player';
+        if (indexP < indexB) return 'banker';
+        return 'tie';
+      }
+    };
+
+    // --- Game State -----------------------------------------------------------
+    let deck = Deck.make();
+    let lives = 3;
+    let handNo = 0;
+    let currentBet = null;
+    let stats = { hands: 0, player: 0, banker: 0, tie: 0 };
+
+    // --- UI Elements and Helpers ----------------------------------------------
+    const els = {
+      pCards: document.getElementById('player-cards'),
+      bCards: document.getElementById('banker-cards'),
+      lives: document.getElementById('lives'),
+      deckCount: document.getElementById('deck-count'),
+      status: document.getElementById('round-status'),
+      log: document.getElementById('log'),
+      deckbar: document.getElementById('deckbar-fill'),
+      deal: document.getElementById('deal'),
+      reshuffle: document.getElementById('reshuffle'),
+      reset: document.getElementById('reset'),
+      betPlayer: document.getElementById('bet-player'),
+      betBanker: document.getElementById('bet-banker'),
+      betTie: document.getElementById('bet-tie'),
+      runSim: document.getElementById('run-sim'),
+      toggleContrast: document.getElementById('toggle-contrast'),
+      gameOver: document.getElementById('game-over'),
+      restart: document.getElementById('restart')
+    };
+
+    const UI = {
+      updateDeck() {
+        els.deckCount.textContent = deck.length;
+        const pct = Math.max(0, Math.min(100, (deck.length / CONFIG.TOTAL_DECK_SIZE) * 100));
+        els.deckbar.style.width = pct + '%';
+      },
+      updateLives() {
+        lives = Math.max(0, Math.min(CONFIG.MAX_LIVES, lives));
+        els.lives.textContent = Number.isInteger(lives) ? lives : lives.toFixed(1);
+        if (lives < 1) {
+          els.deal.disabled = true;
+          this.setStatus('Game Over – Not enough lives', 'lose');
+          els.gameOver.style.display = 'grid';
+          els.restart.focus();
+        } else {
+          els.deal.disabled = false;
+          els.gameOver.style.display = 'none';
+        }
+      },
+      setStatus(text, cls) {
+        els.status.className = 'pill status' + (cls ? ' ' + cls : '');
+        els.status.textContent = text;
+      },
+      renderCards(node, cards, isGhost = false) {
+        try {
+          const fragment = document.createDocumentFragment();
+          if (isGhost) {
+            cards.forEach(() => {
+              const div = document.createElement('div');
+              div.className = 'card ghost';
+              div.textContent = '🃏';
+              fragment.appendChild(div);
+            });
+          } else {
+            cards.forEach((c, i) => {
+              if (!CONFIG.EMOJI[c]) throw new Error(`Invalid card type: ${c}`);
+              const div = document.createElement('div');
+              div.className = `card ${CONFIG.NAME[c].toLowerCase()}`;
+              div.textContent = CONFIG.EMOJI[c];
+              div.setAttribute('aria-label', `Card ${i + 1}: ${CONFIG.NAME[c]}`);
+              div.tabIndex = 0;
+              fragment.appendChild(div);
+            });
+          }
+          node.innerHTML = '';
+          node.appendChild(fragment);
+        } catch (e) {
+          console.error('Error rendering cards:', e);
+          this.setStatus('Error rendering cards', 'lose');
+        }
+      },
+      renderSingleCard(node, card, index) {
+        try {
+          if (!CONFIG.EMOJI[card]) throw new Error(`Invalid card type: ${card}`);
+          const div = document.createElement('div');
+          div.className = `card ${CONFIG.NAME[card].toLowerCase()}`;
+          div.setAttribute('aria-live', 'polite');
+          div.innerHTML = `
+            <div class="front" aria-label="Card ${index + 1}: ${CONFIG.NAME[card]}" tabindex="0">${CONFIG.EMOJI[card]}</div>
+            <div class="back">🃏</div>
+          `;
+          if (node.children[index]) {
+            node.replaceChild(div, node.children[index]);
+          } else {
+            node.appendChild(div);
+          }
+          setTimeout(() => {
+            div.classList.add('revealing');
+          }, 50);
+        } catch (e) {
+          console.error('Error rendering single card:', e);
+          this.setStatus('Error rendering card', 'lose');
+        }
+      },
+      appendLog(pCards, bCards, bet, outcome, delta) {
+        try {
+          if (els.log.children.length >= CONFIG.MAX_HISTORY_ENTRIES) {
+            els.log.removeChild(els.log.lastChild);
+          }
+          handNo += 1;
+          const pEval = Hand.evaluate(pCards);
+          const bEval = Hand.evaluate(bCards);
+          const deltaSign = delta > 0 ? '+' : '';
+          const deltaClass = delta > 0 ? 'win' : delta < 0 ? 'lose' : 'tie';
+          const resultText = outcome === 'player' ? 'Player' : outcome === 'banker' ? 'Banker' : 'Tie';
+          const resultClass = bet === outcome ? 'win' : 'lose';
+          const betText = bet ? String(bet).charAt(0).toUpperCase() + String(bet).slice(1) : 'None';
+          const pEmoji = CONFIG.EMOJI[pEval.type] || '🌀';
+          const bEmoji = CONFIG.EMOJI[bEval.type] || '🌀';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="opacity:.8">${handNo}</td>
+            <td>${betText}</td>
+            <td>${pEmoji}</td>
+            <td>${bEmoji}</td>
+            <td><span class="tag ${resultClass}">${resultText}</span></td>
+            <td><span class="tag ${deltaClass}">${deltaSign}${delta}</span></td>
+          `;
+          els.log.prepend(tr);
+        } catch (e) {
+          console.error('Error in appendLog:', e);
+          UI.setStatus('Error logging hand', 'lose');
+        }
+      },
+      disableButtons(disable) {
+        [els.deal, els.betPlayer, els.betBanker, els.betTie, els.reshuffle, els.reset, els.runSim].forEach(b => b.disabled = disable);
+      }
+    };
+
+    // --- Statistics Update ----------------------------------------------------
+    function updateStats() {
+      const sdiv = document.getElementById('stats');
+      if (stats.hands === 0) {
+        sdiv.innerHTML = 'No hands played yet.';
+      } else {
+        sdiv.innerHTML = `
+          Total Hands: ${stats.hands}<br>
+          Player Wins: ${stats.player} (${(stats.player / stats.hands * 100).toFixed(2)}%)<br>
+          Banker Wins: ${stats.banker} (${(stats.banker / stats.hands * 100).toFixed(2)}%)<br>
+          Ties: ${stats.tie} (${(stats.tie / stats.hands * 100).toFixed(2)}%)
+        `;
+      }
+    }
+
+    // --- Simulation -----------------------------------------------------------
+    let isSimRunning = false;
+    function runSim() {
+      if (isSimRunning) return;
+      isSimRunning = true;
+      UI.disableButtons(true);
+      UI.setStatus('Running simulation...', 'tie');
+
+      const N = 10000;
+      let counts = { player: 0, banker: 0, tie: 0 };
+      let i = 0;
+      const chunkSize = 1000;
+
+      function processChunk() {
+        const end = Math.min(i + chunkSize, N);
+        for (; i < end; i++) {
+          let tempDeck = Deck.make();
+          let pCards = [tempDeck.pop(), tempDeck.pop()];
+          let bCards = [tempDeck.pop(), tempDeck.pop()];
+          let pEval = Hand.evaluate(pCards);
+          let bEval = Hand.evaluate(bCards);
+          let who = Hand.compare(pEval, bEval);
+          counts[who]++;
+        }
+        if (i < N) {
+          requestAnimationFrame(processChunk);
+        } else {
+          document.getElementById('sim-content').innerHTML = `
+            Player Win Rate: ${(counts.player / N * 100).toFixed(2)}%<br>
+            Banker Win Rate: ${(counts.banker / N * 100).toFixed(2)}%<br>
+            Tie Rate: ${(counts.tie / N * 100).toFixed(2)}%
+          `;
+          UI.setStatus('Simulation complete', 'win');
+          isSimRunning = false;
+          UI.disableButtons(false);
+        }
+      }
+      requestAnimationFrame(processChunk);
+    }
+
+    // --- Game Logic -----------------------------------------------------------
+    function deal() {
+      if (els.deal.disabled) return;
+      if (!currentBet) {
+        UI.setStatus('Select a bet first', '');
+        return;
+      }
+      if (lives < 1) {
+        UI.setStatus('Not enough lives to bet', 'lose');
+        return;
+      }
+      try {
+        Deck.ensure(CONFIG.MIN_CARDS_FOR_DEAL);
+        lives -= 1;
+        const pCards = [deck.pop(), deck.pop()];
+        const bCards = [deck.pop(), deck.pop()];
+        UI.updateDeck();
+
+        UI.disableButtons(true);
+
+        UI.renderCards(els.pCards, ['?', '?'], true);
+        UI.renderCards(els.bCards, ['?', '?'], true);
+
+        const ANIMATION_DURATION = 300;
+        setTimeout(() => {
+          UI.setStatus('Revealing Player card 1...', '');
+          UI.renderSingleCard(els.pCards, pCards[0], 0);
+          setTimeout(() => {
+            UI.setStatus('Revealing Player card 2...', '');
+            UI.renderSingleCard(els.pCards, pCards[1], 1);
+            setTimeout(() => {
+              UI.setStatus('Revealing Banker card 1...', '');
+              UI.renderSingleCard(els.bCards, bCards[0], 0);
+              setTimeout(() => {
+                UI.setStatus('Revealing Banker card 2...', '');
+                UI.renderSingleCard(els.bCards, bCards[1], 1);
+                setTimeout(() => {
+                  const pEval = Hand.evaluate(pCards);
+                  const bEval = Hand.evaluate(bCards);
+                  const who = Hand.compare(pEval, bEval);
+
+                  stats.hands++;
+                  stats[who]++;
+
+                  let delta = -1;
+                  let reward = 0;
+                  let statusText = '';
+                  let statusCls = currentBet === who ? 'win' : 'lose';
+                  const pEmoji = CONFIG.EMOJI[pEval.type] || '🌀';
+                  const bEmoji = CONFIG.EMOJI[bEval.type] || '🌀';
+                  if (who === 'player') {
+                    statusText = `Player Wins (${pEmoji} > ${bEmoji})`;
+                  } else if (who === 'banker') {
+                    statusText = `Banker Wins (${bEmoji} > ${pEmoji})`;
+                  } else {
+                    statusText = `Tie (${pEmoji} == ${bEmoji})`;
+                    statusCls = currentBet === 'tie' ? 'win' : 'lose';
+                  }
+
+                  if (currentBet === who) {
+                    reward = who === 'player' ? 0.5 : who === 'banker' ? 1 : 2;
+                    if ((who === 'player' && pEval.type === 'XX') ||
+                        (who === 'banker' && bEval.type === 'XX') ||
+                        (who === 'tie' && pEval.type === 'XX' && bEval.type === 'XX')) {
+                      reward += 0.5;
+                      statusText += ` | Double All bonus! +${reward} lives`;
+                    } else {
+                      statusText += ` | Correct bet! +${reward} lives`;
+                    }
+                    delta = reward;
+                    lives += 1 + reward;
+                    statusCls = 'win';
+                  } else {
+                    statusText += ' | Incorrect bet';
+                  }
+                  UI.updateLives();
+                  UI.setStatus(statusText, statusCls);
+
+                  if (currentBet) {
+                    UI.appendLog(pCards, bCards, currentBet, who, delta);
+                  }
+                  updateStats();
+
+                  currentBet = null;
+                  [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+                  UI.disableButtons(false);
+                  els.deal.focus();
+                }, ANIMATION_DURATION + 100);
+              }, ANIMATION_DURATION + 100);
+            }, ANIMATION_DURATION + 100);
+          }, ANIMATION_DURATION + 100);
+        }, 0);
+      } catch (e) {
+        console.error('Error in deal:', e);
+        UI.setStatus('Error during deal', 'lose');
+        UI.disableButtons(false);
+      }
+    }
+
+    function reshuffle() {
+      deck = Deck.make();
+      UI.updateDeck();
+      UI.setStatus('Reshuffled deck', 'tie');
+    }
+
+    function reset() {
+      deck = Deck.make();
+      UI.updateDeck();
+      lives = 3;
+      UI.updateLives();
+      handNo = 0;
+      els.log.innerHTML = '';
+      currentBet = null;
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+      UI.setStatus('Ready');
+      UI.renderCards(els.pCards, ['?', '?'], true);
+      UI.renderCards(els.bCards, ['?', '?'], true);
+      els.gameOver.style.display = 'none';
+      stats = { hands: 0, player: 0, banker: 0, tie: 0 };
+      updateStats();
+      document.getElementById('sim-content').innerHTML = 'Click the train to compute.';
+    }
+
+    // --- Event Listeners ------------------------------------------------------
+    els.betPlayer.addEventListener('click', () => {
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+      els.betPlayer.classList.add('active');
+      currentBet = 'player';
+      UI.setStatus('Bet on Player', '');
+    });
+    els.betBanker.addEventListener('click', () => {
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+      els.betBanker.classList.add('active');
+      currentBet = 'banker';
+      UI.setStatus('Bet on Banker', '');
+    });
+    els.betTie.addEventListener('click', () => {
+      [els.betPlayer, els.betBanker, els.betTie].forEach(b => b.classList.remove('active'));
+      els.betTie.classList.add('active');
+      currentBet = 'tie';
+      UI.setStatus('Bet on Tie', '');
+    });
+
+    els.deal.addEventListener('click', deal);
+    els.reshuffle.addEventListener('click', reshuffle);
+    els.reset.addEventListener('click', reset);
+    els.restart.addEventListener('click', reset);
+    els.runSim.addEventListener('click', runSim);
+    els.toggleContrast.addEventListener('click', () => {
+      document.documentElement.classList.toggle('high-contrast');
+    });
+
+    // Keyboard navigation
+    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset, els.toggleContrast, els.restart, els.runSim].forEach(btn => {
+      btn.addEventListener('keydown', e => {
+        if (e.key === 'Enter') btn.click();
+      });
+    });
+
+    // Touch support
+    [els.betPlayer, els.betBanker, els.betTie, els.deal, els.reshuffle, els.reset, els.toggleContrast, els.restart, els.runSim].forEach(btn => {
+      btn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        btn.click();
+      });
+    });
+
+    // Initial setup
+    UI.updateDeck();
+    UI.updateLives();
+    updateStats();
+    document.getElementById('cycle-diag').innerHTML = 'Light 💡 > Fire 🔥 > Air 💨 > Earth 🌍 > Water 💧 > Dark 🌑';
+  </script>
+</body>
+</html>
