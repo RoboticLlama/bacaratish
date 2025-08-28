@@ -397,12 +397,11 @@
       compare(p, b) {
         if (p.type === 'XX' && b.type === 'XX') return 'tie';
         if (p.type === 'XX') return 'player';
-        if (b.type === 'XX') return 'banker';
+        if (b.type === 'XX') return 'banker'; // Fixed: Changed smart quotes to straight quotes
         if (p.type === 'N' && b.type === 'N') return 'tie';
         if (p.type === 'N') return 'banker';
         if (b.type === 'N') return 'player';
         if (p.type === b.type) return 'tie';
-        // Higher suit index wins
         const indexP = suitIndex[p.type];
         const indexB = suitIndex[b.type];
         if (indexP > indexB) return 'player';
@@ -617,7 +616,6 @@
       try {
         Deck.ensure(CONFIG.MIN_CARDS_FOR_DEAL);
         lives -= 1;
-        UI.updateLives();
         const pCards = [deck.pop(), deck.pop()];
         const bCards = [deck.pop(), deck.pop()];
         UI.updateDeck();
