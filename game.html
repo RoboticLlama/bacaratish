@@ -244,16 +244,16 @@
             <ul>
               <li>Deck: <strong>38 cards</strong> — 6 Fire, 6 Water, 6 Earth, 6 Air, 6 Light, 6 Dark, 2 All.</li>
               <li>Each side (Player, Banker) is dealt <strong>two cards</strong>.</li>
-              <li>Card values: Water=1, Light=2, Earth=3, Air=4, Dark=5, Fire=6.</li>
+              <li>Card values: Dark=1, Water=2, Earth=3, Air=4, Fire=5, Light=6.</li>
               <li>Hand evaluation:
                 <ul>
                   <li>Two All cards = automatic win (Double All, 🌟). If both sides have Double All → Tie.</li>
-                  <li>One All + one suit = double the suit’s value (e.g., All + Water = 2 × 1 = 2).</li>
+                  <li>One All + one suit = double the suit’s value (e.g., All + Dark = 2 × 1 = 2).</li>
                   <li>Opposite suits (Fire+Water, Air+Earth, Light+Dark) = Neutral (🌀, value=0).</li>
-                  <li>Other pairs: Sum values, map to suit via (sum-1) % 6: 0=Water, 1=Light, 2=Earth, 3=Air, 4=Dark, 5=Fire.</li>
+                  <li>Other pairs: Sum values, map to suit via (sum-1) % 6: 0=Dark, 1=Water, 2=Earth, 3=Air, 4=Fire, 5=Light.</li>
                 </ul>
               </li>
-              <li>Compare effective suits using hierarchy: <strong>Fire 🔥 > Dark 🌑 > Air 💨 > Earth 🌍 > Light 💡 > Water 💧</strong>. Higher suit wins, shown as [Player Emoji] > [Banker Emoji] or [Player Emoji] == [Banker Emoji] for ties. Neutral (🌀) loses to any suit or Double All (🌟), ties with Neutral (🌀).</li>
+              <li>(Compare effective suits using hierarchy: <strong>Light 💡 > Fire 🔥 > Air 💨 > Earth 🌍 > Water 💧 > Dark 🌑)</strong>. Higher suit wins, shown as [Player Emoji] > [Banker Emoji] or [Player Emoji] == [Banker Emoji] for ties. Neutral (🌀) loses to any suit or Double All (🌟), ties with Neutral (🌀).</li>
               <li><strong>Betting</strong>: Bet 1 life on Player, Banker, or Tie before each hand. Incorrect bet loses 1 life.</li>
               <li>Correct bet rewards: Player +0.5 life (+1 if Double All), Banker +1 life (+1.5 if Double All), Tie +2 lives (+2.5 if both Double All).</li>
               <li>Start with 3 lives. Max lives: 7.</li>
@@ -281,7 +281,7 @@
           <div class="stack">
             <strong>Visual Hierarchy Diagram</strong>
             <div id="cycle-diag" style="font-size: var(--text-base); white-space: nowrap; overflow: auto;">
-              Fire 🔥 > Dark 🌑 > Air 💨 > Earth 🌍 > Light 💡 > Water 💧
+              Light 💡 > Fire 🔥 > Air 💨 > Earth 🌍 > Water 💧 > Dark 🌑
             </div>
           </div>
 
@@ -311,8 +311,8 @@
     const CONFIG = {
       EMOJI: { F: '🔥', W: '💧', E: '🌍', A: '💨', L: '💡', D: '🌑', X: '🌟', N: '🌀' },
       NAME: { F: 'Fire', W: 'Water', E: 'Earth', A: 'Air', L: 'Light', D: 'Dark', X: 'All', N: 'Neutral' },
-      VALUES: { W: 1, L: 2, E: 3, A: 4, D: 5, F: 6 },
-      SUITS_ORDER: ['W', 'L', 'E', 'A', 'D', 'F'],
+      VALUES: { D: 1, W: 2, E: 3, A: 4, F: 5, L: 6 },
+      SUITS_ORDER: ['D', 'W', 'E', 'A', 'F', 'L'],
       OPPOSITES: [['L', 'D'], ['F', 'W'], ['A', 'E']],
       DECK: { F: 6, W: 6, E: 6, A: 6, L: 6, D: 6, X: 2 },
       TOTAL_DECK_SIZE: 38,
@@ -323,7 +323,7 @@
       TOTAL_ANIMATION_TIME: 1600
     };
 
-    const suitIndex = { W: 0, L: 1, E: 2, A: 3, D: 4, F: 5 };
+    const suitIndex = { D: 0, W: 1, E: 2, A: 3, F: 4, L: 5 };
 
     // --- Deck Management ------------------------------------------------------
     const Deck = {
@@ -775,7 +775,7 @@
     UI.updateDeck();
     UI.updateLives();
     updateStats();
-    document.getElementById('cycle-diag').innerHTML = 'Fire 🔥 > Dark 🌑 > Air 💨 > Earth 🌍 > Light 💡 > Water 💧';
+    document.getElementById('cycle-diag').innerHTML = 'Light 💡 > Fire 🔥 > Air 💨 > Earth 🌍 > Water 💧 > Dark 🌑';
   </script>
 </body>
 </html>
